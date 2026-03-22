@@ -1,18 +1,239 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { createPublicClient, http, formatUnits } from 'viem';
+import { baseSepolia } from 'viem/chains';
 import PriceChart from '@/components/PriceChart';
 import TokenScreener from '@/components/TokenScreener';
 import PnLChart from '@/components/PnLChart';
-import { TREASURY_ADDRESS } from '@/lib/contracts';
+import { TREASURY_ADDRESS, USDC_ADDRESS, USDC_DECIMALS, TREASURY_ABI, ERC20_ABI } from '@/lib/contracts';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
-const MOCK_WALLET = '0x8a49...eeD9';
-const MOCK_AGENT_1 = '0x1234...abcD';
-const MOCK_AGENT_2 = '0x5678...ef01';
+const OWNER_WALLET = '0xa251e11f1702f9bcAfA7c3a580cc29898b76C854' as `0x${string}`;
+const publicClient = createPublicClient({
+  chain: baseSepolia,
+  transport: http('https://sepolia.base.org'),
+});
 
-// ─── ShieldIcon (same as main page) ──────────────────────────────────────────
+// ─── Types ───────────────────────────────────────────────────────────────────
+
+interface ChainData {
+  treasuryBalance: string;
+  ownerUsdcBalance: string;
+  agentCount: number;
+  agents: `0x${string}`[];
+  allowances: {
+    agent: `0x${string}`;
+    maxAmount: string;
+    spent: string;
+    remaining: string;
+    percentUsed: number;
+    expiry: number;
+    active: boolean;
+  }[];
+  events: { ts: string; msg: string; color: string }[];
+  paused: boolean;
+}
+
+// ─── Skeleton ────────────────────────────────────────────────────────────────
+
+function Skeleton({ className = '' }: { className?: string }) {
+  return (
+    <div
+      className={`animate-pulse rounded bg-[rgba(255,255,255,0.06)] ${className}`}
+    />
+  );
+}
+
+// ─── useChainData hook ───────────────────────────────────────────────────────
+
+function useChainData() {
+  const [data, setData] = useState<ChainData | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  const fetchData = useCallback(async () => {
+    try {
+      // Parallel reads
+      const [depositsRaw, agentCountRaw, agentsRaw, ownerBalanceRaw, pausedRaw, blockNumber] = await Promise.all([
+        publicClient.readContract({
+          address: TREASURY_ADDRESS,
+          abi: TREASURY_ABI,
+          functionName: 'deposits',
+          args: [USDC_ADDRESS],
+        }) as Promise<bigint>,
+        publicClient.readContract({
+          address: TREASURY_ADDRESS,
+          abi: TREASURY_ABI,
+          functionName: 'getAgentCount',
+        }) as Promise<bigint>,
+        publicClient.readContract({
+          address: TREASURY_ADDRESS,
+          abi: TREASURY_ABI,
+          functionName: 'getAgents',
+        }) as Promise<`0x${string}`[]>,
+        publicClient.readContract({
+          address: USDC_ADDRESS,
+          abi: ERC20_ABI,
+          functionName: 'balanceOf',
+          args: [OWNER_WALLET],
+        }) as Promise<bigint>,
+        publicClient.readContract({
+          address: TREASURY_ADDRESS,
+          abi: TREASURY_ABI,
+          functionName: 'paused',
+        }) as Promise<boolean>,
+        publicClient.getBlockNumber(),
+      ]);
+
+      const treasuryBalance = formatUnits(depositsRaw, USDC_DECIMALS);
+      const ownerUsdcBalance = formatUnits(ownerBalanceRaw, USDC_DECIMALS);
+      const agentCount = Number(agentCountRaw);
+
+      // Fetch allowances for each agent
+      const allowanceResults = await Promise.all(
+        agentsRaw.map(async (agent) => {
+          const result = await publicClient.readContract({
+            address: TREASURY_ADDRESS,
+            abi: TREASURY_ABI,
+            functionName: 'getAgentAllowance',
+            args: [agent, USDC_ADDRESS],
+          }) as [bigint, bigint, bigint, `0x${string}`[], boolean];
+
+          const maxAmount = Number(formatUnits(result[0], USDC_DECIMALS));
+          const spent = Number(formatUnits(result[1], USDC_DECIMALS));
+          const remaining = maxAmount - spent;
+          const percentUsed = maxAmount > 0 ? Math.round((spent / maxAmount) * 100) : 0;
+
+          return {
+            agent,
+            maxAmount: maxAmount.toFixed(2),
+            spent: spent.toFixed(2),
+            remaining: remaining.toFixed(2),
+            percentUsed,
+            expiry: Number(result[2]),
+            active: result[4],
+          };
+        })
+      );
+
+      // Fetch events from recent blocks
+      const fromBlock = blockNumber > 2000n ? blockNumber - 2000n : 0n;
+
+      const eventNames = ['Deposited', 'Withdrawn', 'AgentAllowanceSet', 'AgentAllowanceRevoked', 'AgentExecuted'] as const;
+
+      const logResults = await Promise.all(
+        eventNames.map((eventName) =>
+          publicClient.getLogs({
+            address: TREASURY_ADDRESS,
+            event: TREASURY_ABI.find((e) => e.type === 'event' && e.name === eventName) as any,
+            fromBlock,
+            toBlock: blockNumber,
+          }).catch(() => [] as any[])
+        )
+      );
+
+      // Merge and sort events
+      const allEvents: { blockNumber: bigint; logIndex: number; name: string; args: any }[] = [];
+
+      logResults.forEach((logs, idx) => {
+        const eventName = eventNames[idx];
+        (logs as any[]).forEach((log) => {
+          allEvents.push({
+            blockNumber: log.blockNumber ?? 0n,
+            logIndex: log.logIndex ?? 0,
+            name: eventName,
+            args: log.args ?? {},
+          });
+        });
+      });
+
+      allEvents.sort((a, b) => {
+        if (a.blockNumber !== b.blockNumber) return a.blockNumber < b.blockNumber ? -1 : 1;
+        return a.logIndex - b.logIndex;
+      });
+
+      const fmtAddr = (a: string) => `${a.slice(0, 6)}...${a.slice(-4)}`;
+
+      const events: ChainData['events'] = [
+        { ts: 'INIT', msg: 'Aegis Terminal v2.0 — Live on-chain data', color: 'text-cyan-400' },
+        { ts: 'INIT', msg: `Connected to Base Sepolia (chain 84532)`, color: 'text-cyan-400' },
+        { ts: 'INIT', msg: `Monitoring treasury ${fmtAddr(TREASURY_ADDRESS)}`, color: 'text-cyan-400' },
+        { ts: 'INIT', msg: `Loaded ${allEvents.length} on-chain events (last 2000 blocks)`, color: 'text-cyan-400' },
+      ];
+
+      allEvents.forEach((ev) => {
+        const blk = `#${ev.blockNumber.toString()}`;
+        switch (ev.name) {
+          case 'Deposited':
+            events.push({
+              ts: blk,
+              msg: `DEPOSIT ${formatUnits(ev.args.amount ?? 0n, USDC_DECIMALS)} USDC to treasury`,
+              color: 'text-green-400',
+            });
+            break;
+          case 'Withdrawn':
+            events.push({
+              ts: blk,
+              msg: `WITHDRAW ${formatUnits(ev.args.amount ?? 0n, USDC_DECIMALS)} USDC from treasury`,
+              color: 'text-amber-400',
+            });
+            break;
+          case 'AgentAllowanceSet':
+            events.push({
+              ts: blk,
+              msg: `ALLOWANCE SET ${fmtAddr(ev.args.agent ?? '')} max=${formatUnits(ev.args.maxAmount ?? 0n, USDC_DECIMALS)} USDC`,
+              color: 'text-amber-400',
+            });
+            break;
+          case 'AgentAllowanceRevoked':
+            events.push({
+              ts: blk,
+              msg: `ALLOWANCE REVOKED ${fmtAddr(ev.args.agent ?? '')}`,
+              color: 'text-red-400',
+            });
+            break;
+          case 'AgentExecuted':
+            events.push({
+              ts: blk,
+              msg: `TRANSFER ${fmtAddr(ev.args.agent ?? '')} -> ${fmtAddr(ev.args.target ?? '')} ${formatUnits(ev.args.amount ?? 0n, USDC_DECIMALS)} USDC "${ev.args.reason ?? ''}"`,
+              color: 'text-green-400',
+            });
+            break;
+        }
+      });
+
+      events.push({ ts: 'NOW', msg: 'Watching for new events...', color: 'text-cyan-400' });
+
+      setData({
+        treasuryBalance,
+        ownerUsdcBalance,
+        agentCount,
+        agents: agentsRaw,
+        allowances: allowanceResults,
+        events,
+        paused: pausedRaw,
+      });
+      setError(null);
+    } catch (err: any) {
+      console.error('Chain data fetch error:', err);
+      setError(err?.message ?? 'Failed to fetch on-chain data');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchData();
+    const id = setInterval(fetchData, 30_000); // refresh every 30s
+    return () => clearInterval(id);
+  }, [fetchData]);
+
+  return { data, error, loading };
+}
+
+// ─── ShieldIcon ──────────────────────────────────────────────────────────────
 
 function ShieldIcon({ className }: { className?: string }) {
   return (
@@ -26,9 +247,9 @@ function ShieldIcon({ className }: { className?: string }) {
   );
 }
 
-// ─── Mock Treasury ───────────────────────────────────────────────────────────
+// ─── Live Treasury ──────────────────────────────────────────────────────────
 
-function MockTreasury() {
+function LiveTreasury({ data, loading }: { data: ChainData | null; loading: boolean }) {
   return (
     <div className="glass-card-glow animate-fade-in-up space-y-5">
       {/* Header */}
@@ -53,7 +274,7 @@ function MockTreasury() {
           className="rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-emerald-400"
           style={{ background: 'rgba(52,211,153,0.08)', border: '1px solid rgba(52,211,153,0.15)' }}
         >
-          Owner
+          {data?.paused ? 'Paused' : 'Live'}
         </span>
       </div>
 
@@ -68,17 +289,27 @@ function MockTreasury() {
         <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.1em] text-aegis-muted">
           Treasury Vault Balance
         </p>
-        <p className="stat-number">
-          988.30
-          <span className="ml-2 text-sm font-medium text-aegis-text-dim">USDC</span>
-        </p>
+        {loading ? (
+          <Skeleton className="h-9 w-40" />
+        ) : (
+          <p className="stat-number">
+            {Number(data?.treasuryBalance ?? '0').toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            <span className="ml-2 text-sm font-medium text-aegis-text-dim">USDC</span>
+          </p>
+        )}
         <div className="mt-3 flex items-center gap-2 text-xs text-aegis-text-dim">
           <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" d="M21 12a2.25 2.25 0 0 0-2.25-2.25H15a3 3 0 1 1-6 0H5.25A2.25 2.25 0 0 0 3 12m18 0v6a2.25 2.25 0 0 1-2.25 2.25H5.25A2.25 2.25 0 0 1 3 18v-6m18 0V9M3 12V9m18 0a2.25 2.25 0 0 0-2.25-2.25H5.25A2.25 2.25 0 0 0 3 9m18 0V6a2.25 2.25 0 0 0-2.25-2.25H5.25A2.25 2.25 0 0 0 3 6v3" />
           </svg>
           <span>
-            Your wallet:{' '}
-            <span className="font-medium text-aegis-text">1,000.00 USDC</span>
+            Owner wallet:{' '}
+            {loading ? (
+              <Skeleton className="inline-block h-3 w-20" />
+            ) : (
+              <span className="font-medium text-aegis-text">
+                {Number(data?.ownerUsdcBalance ?? '0').toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USDC
+              </span>
+            )}
           </span>
         </div>
       </div>
@@ -162,21 +393,20 @@ function MockCreateAllowance() {
   );
 }
 
-// ─── Mock OrderBook ──────────────────────────────────────────────────────────
+// ─── Live OrderBook ─────────────────────────────────────────────────────────
 
-function MockOrderBook() {
-  const rows = [
-    { address: MOCK_AGENT_1, remaining: '450.00', spent: '50.00', percentUsed: 10 },
-    { address: MOCK_AGENT_2, remaining: '180.50', spent: '119.50', percentUsed: 40 },
-  ];
-  const totalRemaining = '630.50';
-  const totalSpent = '169.50';
-  const totalPercent = 21;
+function LiveOrderBook({ data, loading }: { data: ChainData | null; loading: boolean }) {
+  const rows = data?.allowances ?? [];
+  const totalRemaining = rows.reduce((s, r) => s + Number(r.remaining), 0).toFixed(2);
+  const totalSpent = rows.reduce((s, r) => s + Number(r.spent), 0).toFixed(2);
+  const totalMax = rows.reduce((s, r) => s + Number(r.maxAmount), 0);
+  const totalPercent = totalMax > 0 ? Math.round((Number(totalSpent) / totalMax) * 100) : 0;
 
   return (
     <div className="terminal-panel flex flex-col h-full">
       <div className="terminal-header">
         <span className="text-[11px] font-semibold uppercase tracking-wider text-aegis-text-dim">Allowance Book</span>
+        <span className="ml-auto text-[10px] text-aegis-muted font-mono">on-chain</span>
       </div>
       <div className="flex-1 overflow-auto">
         <div className="space-y-0">
@@ -187,64 +417,65 @@ function MockOrderBook() {
             <span className="text-right w-16">Spent</span>
             <span className="text-right w-12">Used</span>
           </div>
-          {/* Rows */}
-          {rows.map((row) => (
-            <div key={row.address} className="group border-b border-[rgba(255,255,255,0.03)] px-3 py-2 hover:bg-[rgba(255,255,255,0.02)] transition-colors">
-              <div className="grid grid-cols-[1fr_auto_auto_auto] gap-2 items-center text-[11px]">
-                <code className="font-mono text-aegis-text-dim">{row.address}</code>
-                <span className="font-mono text-green-400 text-right w-20">{row.remaining}</span>
-                <span className="font-mono text-red-400 text-right w-16">{row.spent}</span>
-                <span className={`font-mono text-right w-12 ${row.percentUsed > 80 ? 'text-red-400' : row.percentUsed > 50 ? 'text-amber-400' : 'text-aegis-text-dim'}`}>
-                  {row.percentUsed}%
-                </span>
-              </div>
-              <div className="mt-1.5 h-1 overflow-hidden rounded-full bg-[rgba(255,255,255,0.04)]">
-                <div className="h-full flex">
-                  <div className="h-full bg-red-500/60" style={{ width: `${row.percentUsed}%` }} />
-                  <div className="h-full bg-green-500/60" style={{ width: `${100 - row.percentUsed}%` }} />
+          {loading ? (
+            <div className="px-3 py-4 space-y-3">
+              <Skeleton className="h-6 w-full" />
+              <Skeleton className="h-6 w-full" />
+            </div>
+          ) : rows.length === 0 ? (
+            <div className="px-3 py-6 text-center text-[11px] text-aegis-muted">
+              No agent allowances found
+            </div>
+          ) : (
+            <>
+              {rows.map((row) => (
+                <div key={row.agent} className="group border-b border-[rgba(255,255,255,0.03)] px-3 py-2 hover:bg-[rgba(255,255,255,0.02)] transition-colors">
+                  <div className="grid grid-cols-[1fr_auto_auto_auto] gap-2 items-center text-[11px]">
+                    <code className="font-mono text-aegis-text-dim">
+                      {row.agent.slice(0, 6)}...{row.agent.slice(-4)}
+                      {!row.active && <span className="ml-1 text-red-400 text-[9px]">(revoked)</span>}
+                    </code>
+                    <span className="font-mono text-green-400 text-right w-20">{row.remaining}</span>
+                    <span className="font-mono text-red-400 text-right w-16">{row.spent}</span>
+                    <span className={`font-mono text-right w-12 ${row.percentUsed > 80 ? 'text-red-400' : row.percentUsed > 50 ? 'text-amber-400' : 'text-aegis-text-dim'}`}>
+                      {row.percentUsed}%
+                    </span>
+                  </div>
+                  <div className="mt-1.5 h-1 overflow-hidden rounded-full bg-[rgba(255,255,255,0.04)]">
+                    <div className="h-full flex">
+                      <div className="h-full bg-red-500/60" style={{ width: `${row.percentUsed}%` }} />
+                      <div className="h-full bg-green-500/60" style={{ width: `${100 - row.percentUsed}%` }} />
+                    </div>
+                  </div>
+                </div>
+              ))}
+              {/* Totals */}
+              <div className="border-t border-[rgba(255,255,255,0.08)] px-3 py-2">
+                <div className="grid grid-cols-[1fr_auto_auto_auto] gap-2 items-center text-[11px] font-semibold">
+                  <span className="text-aegis-text-dim">TOTAL</span>
+                  <span className="font-mono text-green-400 text-right w-20">{totalRemaining}</span>
+                  <span className="font-mono text-red-400 text-right w-16">{totalSpent}</span>
+                  <span className="font-mono text-aegis-text-dim text-right w-12">{totalPercent}%</span>
+                </div>
+                <div className="mt-1.5 h-1 overflow-hidden rounded-full bg-[rgba(255,255,255,0.04)]">
+                  <div className="h-full flex">
+                    <div className="h-full bg-red-500/60" style={{ width: `${totalPercent}%` }} />
+                    <div className="h-full bg-green-500/60" style={{ width: `${100 - totalPercent}%` }} />
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
-          {/* Totals */}
-          <div className="border-t border-[rgba(255,255,255,0.08)] px-3 py-2">
-            <div className="grid grid-cols-[1fr_auto_auto_auto] gap-2 items-center text-[11px] font-semibold">
-              <span className="text-aegis-text-dim">TOTAL</span>
-              <span className="font-mono text-green-400 text-right w-20">{totalRemaining}</span>
-              <span className="font-mono text-red-400 text-right w-16">{totalSpent}</span>
-              <span className="font-mono text-aegis-text-dim text-right w-12">{totalPercent}%</span>
-            </div>
-            <div className="mt-1.5 h-1 overflow-hidden rounded-full bg-[rgba(255,255,255,0.04)]">
-              <div className="h-full flex">
-                <div className="h-full bg-red-500/60" style={{ width: `${totalPercent}%` }} />
-                <div className="h-full bg-green-500/60" style={{ width: `${100 - totalPercent}%` }} />
-              </div>
-            </div>
-          </div>
+            </>
+          )}
         </div>
       </div>
     </div>
   );
 }
 
-// ─── Mock Terminal Feed ──────────────────────────────────────────────────────
+// ─── Live Terminal Feed ─────────────────────────────────────────────────────
 
-function MockTerminalFeed() {
-  const lines = [
-    { ts: '14:23:01', msg: 'Aegis Terminal v2.0 initialized', color: 'text-cyan-400' },
-    { ts: '14:23:01', msg: 'Connected to Base Sepolia (chain 84532)', color: 'text-cyan-400' },
-    { ts: '14:23:01', msg: `Monitoring treasury ${TREASURY_ADDRESS.slice(0, 6)}...${TREASURY_ADDRESS.slice(-4)}`, color: 'text-cyan-400' },
-    { ts: '14:23:02', msg: 'Loaded 12 historical events', color: 'text-cyan-400' },
-    { ts: '14:23:02', msg: 'DEPOSIT 500.00 USDC to treasury', color: 'text-green-400' },
-    { ts: '14:23:02', msg: `ALLOWANCE SET ${MOCK_AGENT_1} max=500.00 USDC`, color: 'text-amber-400' },
-    { ts: '14:23:02', msg: `ALLOWANCE SET ${MOCK_AGENT_2} max=300.00 USDC`, color: 'text-amber-400' },
-    { ts: '14:23:03', msg: 'DEPOSIT 500.00 USDC to treasury', color: 'text-green-400' },
-    { ts: '14:25:17', msg: `TRANSFER ${MOCK_AGENT_1} -> 0x7a25...3f8B 50.00 USDC "DCA buy WETH chunk 12/20"`, color: 'text-green-400' },
-    { ts: '14:30:42', msg: `TRANSFER ${MOCK_AGENT_2} -> 0xdEaD...bEEf 25.00 USDC "Momentum entry ETH/USDC"`, color: 'text-green-400' },
-    { ts: '14:31:05', msg: 'WITHDRAW 11.70 USDC from treasury', color: 'text-amber-400' },
-    { ts: '14:45:33', msg: `TRANSFER ${MOCK_AGENT_2} -> 0x7a25...3f8B 94.50 USDC "Momentum scale-in ETH"`, color: 'text-green-400' },
-    { ts: '14:52:18', msg: 'Waiting for on-chain events...', color: 'text-cyan-400' },
-  ];
+function LiveTerminalFeed({ data, loading }: { data: ChainData | null; loading: boolean }) {
+  const lines = data?.events ?? [];
 
   return (
     <div className="terminal-panel flex flex-col h-full">
@@ -253,13 +484,23 @@ function MockTerminalFeed() {
         <span className="ml-auto text-[10px] text-aegis-muted">{lines.length} lines</span>
       </div>
       <div className="flex-1 overflow-auto p-3 font-mono text-[11px] leading-5" style={{ maxHeight: '320px' }}>
-        {lines.map((line, i) => (
-          <div key={i} className="whitespace-nowrap">
-            <span className="text-green-500">[{line.ts}]</span>{' '}
-            <span className={line.color}>{line.msg}</span>
+        {loading ? (
+          <div className="space-y-2">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <Skeleton key={i} className="h-4 w-full" />
+            ))}
           </div>
-        ))}
-        <div className="inline-block h-3.5 w-1.5 animate-pulse bg-green-400/80 align-middle" />
+        ) : (
+          <>
+            {lines.map((line, i) => (
+              <div key={i} className="whitespace-nowrap">
+                <span className="text-green-500">[{line.ts}]</span>{' '}
+                <span className={line.color}>{line.msg}</span>
+              </div>
+            ))}
+            <div className="inline-block h-3.5 w-1.5 animate-pulse bg-green-400/80 align-middle" />
+          </>
+        )}
       </div>
     </div>
   );
@@ -267,7 +508,7 @@ function MockTerminalFeed() {
 
 // ─── Mock Strategy Panel ─────────────────────────────────────────────────────
 
-function MockStrategyPanel() {
+function MockStrategyPanel({ data, loading }: { data: ChainData | null; loading: boolean }) {
   type StrategyTab = 'DCA' | 'Momentum' | 'Rebalance' | 'Risk';
 
   const [activeTab, setActiveTab] = useState<StrategyTab>('DCA');
@@ -302,6 +543,8 @@ function MockStrategyPanel() {
   };
 
   const tabs: StrategyTab[] = ['DCA', 'Momentum', 'Rebalance', 'Risk'];
+
+  const treasuryBal = data ? Number(data.treasuryBalance).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '--';
 
   return (
     <div className="terminal-panel flex flex-col h-full">
@@ -347,7 +590,6 @@ function MockStrategyPanel() {
           </span>
         </div>
 
-        {/* DCA Details (always shown for simplicity, others similar) */}
         {activeTab === 'DCA' && (
           <div className="space-y-1.5">
             <div className="flex justify-between"><span className="text-aegis-muted">Chunk Size</span><span className="font-mono text-aegis-text-dim">50.00 USDC</span></div>
@@ -387,13 +629,22 @@ function MockStrategyPanel() {
 
         <div className="h-px bg-[rgba(255,255,255,0.06)]" />
 
-        {/* Agent Status */}
+        {/* Agent Status — live data */}
         <div>
           <span className="text-aegis-muted font-medium uppercase tracking-wider text-[10px]">Agent Status</span>
           <div className="mt-2 space-y-1">
-            <div className="flex justify-between"><span className="text-aegis-muted">Active Agents</span><span className="font-mono text-aegis-text-dim">2</span></div>
-            <div className="flex justify-between"><span className="text-aegis-muted">Treasury</span><span className="font-mono text-white">988.30 USDC</span></div>
-            <div className="flex justify-between"><span className="text-aegis-muted">Last Analysis</span><span className="font-mono text-aegis-text-dim">{lastAnalysis}</span></div>
+            <div className="flex justify-between">
+              <span className="text-aegis-muted">Active Agents</span>
+              <span className="font-mono text-aegis-text-dim">{loading ? '--' : data?.agentCount ?? 0}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-aegis-muted">Treasury</span>
+              <span className="font-mono text-white">{loading ? '--' : `${treasuryBal} USDC`}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-aegis-muted">Last Analysis</span>
+              <span className="font-mono text-aegis-text-dim">{lastAnalysis}</span>
+            </div>
           </div>
         </div>
       </div>
@@ -473,52 +724,84 @@ function MockVenicePanel() {
   );
 }
 
-// ─── Mock Portfolio ──────────────────────────────────────────────────────────
+// ─── Live Portfolio ─────────────────────────────────────────────────────────
 
-function MockPortfolio() {
-  const holdings = [
-    { symbol: 'ETH', name: 'Ether', balance: '0.0450', usdValue: '$155.25', pct: '12.4%', color: '#627eea', icon: '\u039E' },
-    { symbol: 'WETH', name: 'Wrapped Ether', balance: '0.0120', usdValue: '$41.40', pct: '3.3%', color: '#ec4899', icon: 'W' },
-    { symbol: 'USDC', name: 'USD Coin', balance: '1,000.00', usdValue: '$1,000.00', pct: '84.3%', color: '#2775ca', icon: '$' },
-  ];
-  const totalValue = '$1,196.65';
+function LivePortfolio({ data, loading }: { data: ChainData | null; loading: boolean }) {
+  const ownerUsdc = data ? Number(data.ownerUsdcBalance) : 0;
+  const treasuryUsdc = data ? Number(data.treasuryBalance) : 0;
+  const totalValue = ownerUsdc + treasuryUsdc;
+
+  const holdings = data
+    ? [
+        {
+          symbol: 'USDC',
+          name: 'USD Coin (Wallet)',
+          balance: ownerUsdc.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+          usdValue: `$${ownerUsdc.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+          pct: totalValue > 0 ? `${((ownerUsdc / totalValue) * 100).toFixed(1)}%` : '0%',
+          color: '#2775ca',
+          icon: '$',
+        },
+        {
+          symbol: 'USDC',
+          name: 'USD Coin (Treasury)',
+          balance: treasuryUsdc.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+          usdValue: `$${treasuryUsdc.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+          pct: totalValue > 0 ? `${((treasuryUsdc / totalValue) * 100).toFixed(1)}%` : '0%',
+          color: '#8b5cf6',
+          icon: 'T',
+        },
+      ]
+    : [];
+
+  const walletPct = totalValue > 0 ? (ownerUsdc / totalValue) * 100 : 50;
+  const treasuryPct = totalValue > 0 ? (treasuryUsdc / totalValue) * 100 : 50;
+  const totalStr = totalValue >= 1000 ? `$${(totalValue / 1000).toFixed(1)}K` : `$${totalValue.toFixed(0)}`;
 
   return (
     <div className="terminal-panel flex flex-col h-full">
       <div className="terminal-header">
         <span className="text-[11px] font-semibold uppercase tracking-wider text-aegis-text-dim">Portfolio</span>
-        <span className="ml-auto font-mono text-[11px] text-white font-bold">{totalValue}</span>
+        <span className="ml-auto font-mono text-[11px] text-white font-bold">
+          {loading ? '--' : `$${totalValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+        </span>
       </div>
       <div className="flex-1 overflow-auto">
-        {/* Donut chart placeholder */}
-        <div className="flex items-center justify-center py-3">
-          <svg viewBox="0 0 120 120" className="h-24 w-24">
-            {/* USDC segment (large) */}
-            <circle cx="60" cy="60" r="48" fill="none" stroke="#2775ca" strokeWidth="16" strokeDasharray="254 48" strokeDashoffset="-24" opacity="0.8" />
-            {/* ETH segment */}
-            <circle cx="60" cy="60" r="48" fill="none" stroke="#627eea" strokeWidth="16" strokeDasharray="37.5 264.5" strokeDashoffset="-278" opacity="0.8" />
-            {/* WETH segment */}
-            <circle cx="60" cy="60" r="48" fill="none" stroke="#ec4899" strokeWidth="16" strokeDasharray="10 292" strokeDashoffset="13.5" opacity="0.8" />
-            <text x="60" y="56" textAnchor="middle" fill="white" fontSize="10" fontFamily="monospace" fontWeight="bold">$1.2K</text>
-            <text x="60" y="70" textAnchor="middle" fill="rgba(255,255,255,0.4)" fontSize="7" fontFamily="monospace">TOTAL</text>
-          </svg>
-        </div>
-
-        {holdings.map((h) => (
-          <div key={h.symbol} className="flex items-center gap-3 border-b border-[rgba(255,255,255,0.03)] px-3 py-2 hover:bg-[rgba(255,255,255,0.02)] transition-colors">
-            <div className="flex h-7 w-7 items-center justify-center rounded-lg text-xs font-bold" style={{ backgroundColor: `${h.color}20`, color: h.color }}>
-              {h.icon}
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="text-[11px] font-semibold text-white">{h.symbol}</div>
-              <div className="text-[10px] text-aegis-muted truncate">{h.name}</div>
-            </div>
-            <div className="text-right">
-              <div className="font-mono text-[11px] text-white">{h.balance}</div>
-              <div className="font-mono text-[10px] text-aegis-muted">{h.usdValue} ({h.pct})</div>
-            </div>
+        {loading ? (
+          <div className="p-4 space-y-3">
+            <Skeleton className="h-24 w-24 rounded-full mx-auto" />
+            <Skeleton className="h-8 w-full" />
+            <Skeleton className="h-8 w-full" />
           </div>
-        ))}
+        ) : (
+          <>
+            {/* Donut chart */}
+            <div className="flex items-center justify-center py-3">
+              <svg viewBox="0 0 120 120" className="h-24 w-24">
+                <circle cx="60" cy="60" r="48" fill="none" stroke="#2775ca" strokeWidth="16" strokeDasharray={`${walletPct * 3.02} ${302 - walletPct * 3.02}`} strokeDashoffset="-24" opacity="0.8" />
+                <circle cx="60" cy="60" r="48" fill="none" stroke="#8b5cf6" strokeWidth="16" strokeDasharray={`${treasuryPct * 3.02} ${302 - treasuryPct * 3.02}`} strokeDashoffset={`${-24 - walletPct * 3.02}`} opacity="0.8" />
+                <text x="60" y="56" textAnchor="middle" fill="white" fontSize="10" fontFamily="monospace" fontWeight="bold">{totalStr}</text>
+                <text x="60" y="70" textAnchor="middle" fill="rgba(255,255,255,0.4)" fontSize="7" fontFamily="monospace">TOTAL</text>
+              </svg>
+            </div>
+
+            {holdings.map((h, i) => (
+              <div key={i} className="flex items-center gap-3 border-b border-[rgba(255,255,255,0.03)] px-3 py-2 hover:bg-[rgba(255,255,255,0.02)] transition-colors">
+                <div className="flex h-7 w-7 items-center justify-center rounded-lg text-xs font-bold" style={{ backgroundColor: `${h.color}20`, color: h.color }}>
+                  {h.icon}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-[11px] font-semibold text-white">{h.symbol}</div>
+                  <div className="text-[10px] text-aegis-muted truncate">{h.name}</div>
+                </div>
+                <div className="text-right">
+                  <div className="font-mono text-[11px] text-white">{h.balance}</div>
+                  <div className="font-mono text-[10px] text-aegis-muted">{h.usdValue} ({h.pct})</div>
+                </div>
+              </div>
+            ))}
+          </>
+        )}
       </div>
     </div>
   );
@@ -526,11 +809,16 @@ function MockPortfolio() {
 
 // ─── Mock Emergency Controls ─────────────────────────────────────────────────
 
-function MockEmergencyControls() {
+function MockEmergencyControls({ data }: { data: ChainData | null }) {
   return (
     <div className="terminal-panel flex flex-col">
       <div className="terminal-header">
         <span className="text-[11px] font-semibold uppercase tracking-wider text-aegis-text-dim">Emergency</span>
+        {data?.paused && (
+          <span className="ml-2 rounded px-1.5 py-0.5 text-[9px] font-bold uppercase text-red-400 bg-red-500/10 border border-red-500/20">
+            PAUSED
+          </span>
+        )}
       </div>
       <div className="p-3 flex gap-2">
         <button className="flex-1 rounded-lg py-2 text-[10px] font-semibold text-amber-400 border border-amber-500/20 bg-amber-500/5 hover:bg-amber-500/10 transition-colors">
@@ -547,22 +835,39 @@ function MockEmergencyControls() {
   );
 }
 
+// ─── Error Fallback ──────────────────────────────────────────────────────────
+
+function ErrorBanner({ message }: { message: string }) {
+  return (
+    <div className="rounded-xl border border-red-500/20 bg-red-500/5 px-4 py-3 text-sm text-red-400">
+      <span className="font-semibold">RPC Error:</span> {message}. Showing cached/fallback data.
+    </div>
+  );
+}
+
 // ─── Main Demo Page ──────────────────────────────────────────────────────────
 
 export default function DemoPage() {
   const [activeNav, setActiveNav] = useState<'dashboard' | 'screener' | 'terminal' | 'chat'>('dashboard');
+  const { data, error, loading } = useChainData();
+
+  const fmtAddr = (a: string) => `${a.slice(0, 6)}...${a.slice(-4)}`;
+  const treasuryBalDisplay = data
+    ? Number(data.treasuryBalance).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+    : '--';
 
   return (
     <div className="relative z-10 min-h-screen">
       {/* Grid pattern overlay */}
       <div className="grid-overlay" />
 
-      {/* Demo banner */}
+      {/* Live data banner */}
       <div
-        className="bg-gradient-to-r from-blue-500/20 to-purple-500/20 px-4 py-2 text-center text-sm border-b border-blue-500/20"
-        style={{ color: '#93c5fd' }}
+        className="bg-gradient-to-r from-emerald-500/20 to-blue-500/20 px-4 py-2 text-center text-sm border-b border-emerald-500/20"
+        style={{ color: '#6ee7b7' }}
       >
-        Demo Mode &mdash; Connect wallet for live data
+        Live on-chain data &mdash; Base Sepolia (auto-refreshes every 30s)
+        {error && <span className="ml-2 text-red-400 text-xs"> | RPC fallback active</span>}
       </div>
 
       {/* Navigation */}
@@ -623,13 +928,13 @@ export default function DemoPage() {
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.5)]" />
               <span className="text-aegis-text-dim">Base Sepolia</span>
             </div>
-            {/* Fake connected wallet button */}
+            {/* Owner wallet display */}
             <button
               className="flex items-center gap-2 rounded-lg border border-aegis-border px-3 py-1.5 text-xs font-medium text-white transition-colors hover:border-blue-500/30"
               style={{ background: 'rgba(255,255,255,0.04)' }}
             >
               <span className="h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.5)]" />
-              {MOCK_WALLET}
+              {fmtAddr(OWNER_WALLET)}
             </button>
           </div>
         </div>
@@ -640,23 +945,40 @@ export default function DemoPage() {
         <div className="mx-auto flex max-w-[1600px] items-center gap-6 px-4 py-2 text-[11px]">
           <div className="flex items-center gap-2">
             <span className="text-aegis-muted">Treasury Balance</span>
-            <span className="font-mono font-semibold text-white">988.30 USDC</span>
+            {loading ? (
+              <Skeleton className="h-3 w-20" />
+            ) : (
+              <span className="font-mono font-semibold text-white">{treasuryBalDisplay} USDC</span>
+            )}
           </div>
           <div className="h-3 w-px bg-aegis-border" />
           <div className="flex items-center gap-2">
             <span className="text-aegis-muted">Active Agents</span>
-            <span className="font-mono font-semibold text-white">2</span>
+            {loading ? (
+              <Skeleton className="h-3 w-6" />
+            ) : (
+              <span className="font-mono font-semibold text-white">{data?.agentCount ?? 0}</span>
+            )}
           </div>
           <div className="h-3 w-px bg-aegis-border" />
           <div className="flex items-center gap-2">
             <span className="text-aegis-muted">Network</span>
             <span className="font-mono font-semibold text-white">Base Sepolia</span>
           </div>
+          <div className="h-3 w-px bg-aegis-border" />
+          <div className="flex items-center gap-2">
+            <span className="text-aegis-muted">Status</span>
+            <span className={`font-mono font-semibold ${data?.paused ? 'text-red-400' : 'text-emerald-400'}`}>
+              {loading ? '--' : data?.paused ? 'Paused' : 'Active'}
+            </span>
+          </div>
         </div>
       </div>
 
       {/* Content */}
       <main className="mx-auto max-w-[1600px] px-3 py-3">
+        {error && <div className="mb-3"><ErrorBanner message={error} /></div>}
+
         {activeNav === 'dashboard' && (
           <div className="space-y-2">
             <div className="grid grid-cols-1 gap-2 lg:grid-cols-[2fr_1fr]">
@@ -673,26 +995,26 @@ export default function DemoPage() {
                 <PnLChart />
               </div>
               <div className="min-h-[280px]">
-                <MockPortfolio />
+                <LivePortfolio data={data} loading={loading} />
               </div>
 
               {/* Row 3: Treasury + OrderBook */}
               <div className="space-y-2">
-                <MockTreasury />
+                <LiveTreasury data={data} loading={loading} />
                 <MockCreateAllowance />
               </div>
               <div className="min-h-[300px]">
-                <MockOrderBook />
+                <LiveOrderBook data={data} loading={loading} />
               </div>
 
               {/* Row 4: Terminal Feed + Strategy/Venice/Emergency */}
               <div className="min-h-[340px]">
-                <MockTerminalFeed />
+                <LiveTerminalFeed data={data} loading={loading} />
               </div>
               <div className="space-y-2">
-                <MockStrategyPanel />
+                <MockStrategyPanel data={data} loading={loading} />
                 <MockVenicePanel />
-                <MockEmergencyControls />
+                <MockEmergencyControls data={data} />
               </div>
             </div>
           </div>
@@ -706,7 +1028,7 @@ export default function DemoPage() {
 
         {activeNav === 'terminal' && (
           <div className="min-h-[600px]">
-            <MockTerminalFeed />
+            <LiveTerminalFeed data={data} loading={loading} />
           </div>
         )}
 
@@ -726,7 +1048,11 @@ export default function DemoPage() {
             <div className="flex-1 p-4 space-y-4 font-mono text-[12px]">
               <div className="flex gap-3">
                 <span className="text-purple-400 shrink-0">[agent]</span>
-                <span className="text-aegis-text-dim">Treasury balance: 988.30 USDC. 2 active agents. DCA strategy executing chunk 12/20 (50 USDC each, targeting WETH). Next execution in ~2 minutes.</span>
+                <span className="text-aegis-text-dim">
+                  Treasury balance: {treasuryBalDisplay} USDC. {data?.agentCount ?? '--'} active agent(s).
+                  {data?.agents?.length ? ` Agents: ${data.agents.map((a) => fmtAddr(a)).join(', ')}.` : ''}
+                  {' '}DCA strategy executing chunk 12/20 (50 USDC each, targeting WETH). Next execution in ~2 minutes.
+                </span>
               </div>
               <div className="flex gap-3">
                 <span className="text-blue-400 shrink-0">[user]</span>
@@ -734,7 +1060,12 @@ export default function DemoPage() {
               </div>
               <div className="flex gap-3">
                 <span className="text-purple-400 shrink-0">[agent]</span>
-                <span className="text-aegis-text-dim">Current risk exposure is moderate. Total allowance utilization at 21% (169.50/800.00 USDC). Daily trading limit at 35% (175/500 USDC). No slippage violations detected. All positions within defined risk parameters.</span>
+                <span className="text-aegis-text-dim">
+                  {data?.allowances?.length
+                    ? `Current allowance utilization: ${data.allowances.map((a) => `${fmtAddr(a.agent)} at ${a.percentUsed}%`).join(', ')}. `
+                    : 'No active allowances. '}
+                  All positions within defined risk parameters. Contract is {data?.paused ? 'PAUSED' : 'active'}.
+                </span>
               </div>
             </div>
             <div className="border-t border-[rgba(255,255,255,0.06)] p-3">
