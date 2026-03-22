@@ -6,10 +6,13 @@ import CreateAllowance from "@/components/CreateAllowance";
 import EmergencyControls from "@/components/EmergencyControls";
 import TokenScreener from "@/components/TokenScreener";
 import PriceChart from "@/components/PriceChart";
+import PnLChart from "@/components/PnLChart";
+import Portfolio from "@/components/Portfolio";
 import OrderBook from "@/components/OrderBook";
 import TerminalFeed from "@/components/TerminalFeed";
 import StrategyPanel from "@/components/StrategyPanel";
 import VenicePanel from "@/components/VenicePanel";
+import AgentChat from "@/components/AgentChat";
 import { useAccount, useReadContract } from "wagmi";
 import {
   TREASURY_ADDRESS,
@@ -18,7 +21,7 @@ import {
   TREASURY_ABI,
 } from "@/lib/contracts";
 import { formatUnits } from "viem";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 function ShieldIcon({ className }: { className?: string }) {
   return (
@@ -85,7 +88,7 @@ function HeroSection() {
       </div>
 
       {/* Feature cards */}
-      <div className="animate-fade-in-up-delay-3 grid w-full max-w-3xl gap-4 sm:grid-cols-3 lg:max-w-5xl lg:grid-cols-3 lg:gap-6">
+      <div className="animate-fade-in-up-delay-3 grid w-full max-w-3xl grid-cols-1 gap-4 sm:grid-cols-3 lg:max-w-5xl lg:grid-cols-3 lg:gap-6">
         {[
           {
             icon: (
@@ -144,36 +147,82 @@ function HeroSection() {
   );
 }
 
-type NavTab = 'dashboard' | 'screener' | 'terminal';
+type NavTab = 'dashboard' | 'screener' | 'terminal' | 'chat';
 
 function DashboardView() {
+  const [chatOpen, setChatOpen] = useState(false);
+
   return (
-    <div className="grid grid-cols-1 gap-2 lg:grid-cols-[2fr_1fr]">
-      {/* Row 1: Chart + Screener */}
-      <div className="min-h-[360px]">
-        <PriceChart />
-      </div>
-      <div className="min-h-[360px]">
-        <TokenScreener />
+    <div className="space-y-2">
+      <div className="grid grid-cols-1 gap-2 lg:grid-cols-[2fr_1fr]">
+        {/* Row 1: Chart + Screener */}
+        <div className="min-h-[360px]">
+          <PriceChart />
+        </div>
+        <div className="min-h-[360px]">
+          <TokenScreener />
+        </div>
+
+        {/* Row 2: PnL Chart + Portfolio */}
+        <div className="min-h-[280px]">
+          <PnLChart />
+        </div>
+        <div className="min-h-[280px]">
+          <Portfolio />
+        </div>
+
+        {/* Row 3: Treasury/Deposit/Withdraw + OrderBook */}
+        <div className="space-y-2">
+          <Treasury />
+          <CreateAllowance />
+        </div>
+        <div className="min-h-[300px]">
+          <OrderBook />
+        </div>
+
+        {/* Row 3: Terminal Feed + Strategy Panel + Emergency */}
+        <div className="min-h-[340px]">
+          <TerminalFeed />
+        </div>
+        <div className="space-y-2">
+          <StrategyPanel />
+          <VenicePanel />
+          <EmergencyControls />
+        </div>
       </div>
 
-      {/* Row 2: Treasury/Deposit/Withdraw + OrderBook */}
-      <div className="space-y-2">
-        <Treasury />
-        <CreateAllowance />
-      </div>
-      <div className="min-h-[300px]">
-        <OrderBook />
-      </div>
-
-      {/* Row 3: Terminal Feed + Strategy Panel + Emergency */}
-      <div className="min-h-[340px]">
-        <TerminalFeed />
-      </div>
-      <div className="space-y-2">
-        <StrategyPanel />
-        <VenicePanel />
-        <EmergencyControls />
+      {/* Collapsible Agent Chat */}
+      <div className="terminal-panel">
+        <button
+          onClick={() => setChatOpen(!chatOpen)}
+          className="w-full terminal-header flex items-center justify-between cursor-pointer hover:bg-[rgba(255,255,255,0.02)] transition-colors"
+        >
+          <div className="flex items-center gap-2">
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-aegis-text-dim">
+              Agent Chat
+            </span>
+            <span className="inline-flex items-center gap-1 rounded-full border border-[rgba(139,92,246,0.3)] bg-[rgba(139,92,246,0.08)] px-2 py-0.5 text-[9px] font-semibold text-purple-400">
+              <svg className="h-2.5 w-2.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z" />
+              </svg>
+              Private
+            </span>
+          </div>
+          <svg
+            className={`h-4 w-4 text-aegis-muted transition-transform ${chatOpen ? 'rotate-180' : ''}`}
+            fill="none"
+            viewBox="0 0 24 24"
+            strokeWidth={2}
+            stroke="currentColor"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 15.75 7.5-7.5 7.5 7.5" />
+          </svg>
+        </button>
+        {chatOpen && (
+          <div className="min-h-[400px]">
+            <AgentChat />
+          </div>
+        )}
       </div>
     </div>
   );
@@ -195,12 +244,21 @@ function TerminalView() {
   );
 }
 
+function ChatView() {
+  return (
+    <div className="min-h-[600px]">
+      <AgentChat />
+    </div>
+  );
+}
+
 function TradingTerminal({ activeTab }: { activeTab: NavTab }) {
   return (
     <main className="mx-auto max-w-[1600px] px-3 py-3">
       {activeTab === 'dashboard' && <DashboardView />}
       {activeTab === 'screener' && <ScreenerView />}
       {activeTab === 'terminal' && <TerminalView />}
+      {activeTab === 'chat' && <ChatView />}
     </main>
   );
 }
@@ -208,6 +266,22 @@ function TradingTerminal({ activeTab }: { activeTab: NavTab }) {
 export default function Home() {
   const { isConnected } = useAccount();
   const [activeNav, setActiveNav] = useState<NavTab>('dashboard');
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      // Skip when input/textarea is focused
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+
+      if (e.key === '1') { setActiveNav('dashboard'); }
+      else if (e.key === '2') { setActiveNav('screener'); }
+      else if (e.key === '3') { setActiveNav('terminal'); }
+      else if (e.key === '4') { setActiveNav('chat'); }
+    }
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   return (
     <div className="relative z-10 min-h-screen">
@@ -236,16 +310,17 @@ export default function Home() {
 
             {/* Nav links */}
             {isConnected && (
-              <div className="hidden items-center gap-0.5 sm:flex">
+              <div className="nav-tabs-scroll flex items-center gap-0.5 overflow-x-auto">
                 {[
                   { key: 'dashboard' as NavTab, label: 'Dashboard' },
                   { key: 'screener' as NavTab, label: 'Screener' },
                   { key: 'terminal' as NavTab, label: 'Terminal' },
+                  { key: 'chat' as NavTab, label: 'Chat' },
                 ].map(item => (
                   <button
                     key={item.key}
                     onClick={() => setActiveNav(item.key)}
-                    className={`relative rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
+                    className={`relative whitespace-nowrap rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
                       activeNav === item.key
                         ? 'bg-[rgba(59,130,246,0.1)] text-white'
                         : 'text-aegis-text-dim hover:text-white'
@@ -295,6 +370,12 @@ export default function Home() {
             <span>Aegis Treasury</span>
           </div>
           <div className="flex items-center gap-3 text-[10px] text-aegis-muted">
+            {isConnected && (
+              <>
+                <span className="font-mono text-aegis-border">Shortcuts: 1-4 tabs</span>
+                <span className="text-aegis-border">|</span>
+              </>
+            )}
             <a
               href={`https://sepolia.basescan.org/address/${TREASURY_ADDRESS}`}
               target="_blank"

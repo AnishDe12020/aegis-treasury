@@ -355,3 +355,27 @@ main,
 .hero-section {
   animation: page-fade-in 0.4s ease-out;
 }
+
+/* Nav tabs horizontal scroll on mobile */
+.nav-tabs-scroll {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.nav-tabs-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+/* Mobile responsiveness for terminal panels */
+@media (max-width: 768px) {
+  .terminal-panel {
+    min-height: 200px;
+  }
+
+  .terminal-header {
+    padding: 6px 10px;
+  }
+
+  .terminal-panel .flex-1 {
+    min-height: 160px;
+  }
+}
