@@ -15,7 +15,7 @@ export async function POST(req: Request) {
       'Authorization': `Bearer ${apiKey}`,
     },
     body: JSON.stringify({
-      model: 'llama-3.3-70b',
+      model: 'gemini-3-flash-preview',
       messages: [
         {
           role: 'system',
@@ -51,7 +51,7 @@ Be concise, technical, and actionable. Use specific numbers when possible. Forma
 
   return NextResponse.json({
     response: content,
-    model: 'llama-3.3-70b',
+    model: 'gemini-3-flash-preview',
     timestamp: new Date().toISOString(),
     provider: 'venice',
     private: true,

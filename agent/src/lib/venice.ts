@@ -44,7 +44,7 @@ export function createVeniceClient(apiKey: string) {
 export async function analyzeStrategy(
   client: OpenAI,
   context: string,
-  model = 'llama-3.3-70b'
+  model = 'gemini-3-flash-preview'
 ): Promise<{ action: string; reasoning: string; confidence: number }> {
   const completion = await client.chat.completions.create({
     model,
@@ -72,7 +72,7 @@ Be conservative. Only recommend actions with high confidence.`,
 export async function analyzeMarketConditions(
   client: OpenAI,
   context: string,
-  model = 'llama-3.3-70b',
+  model = 'gemini-3-flash-preview',
 ): Promise<MarketConditionsAnalysis> {
   const completion = await client.chat.completions.create({
     model,
@@ -129,7 +129,7 @@ export async function analyzePortfolioHealth(
   client: OpenAI,
   balances: string,
   allowances: string,
-  model = 'llama-3.3-70b',
+  model = 'gemini-3-flash-preview',
 ): Promise<PortfolioHealthAnalysis> {
   const completion = await client.chat.completions.create({
     model,

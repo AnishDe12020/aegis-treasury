@@ -15,7 +15,7 @@ export async function POST(req: Request) {
       'Authorization': `Bearer ${apiKey}`,
     },
     body: JSON.stringify({
-      model: 'llama-3.3-70b',
+      model: 'gemini-3-flash-preview',
       messages: [
         {
           role: 'system',
@@ -38,7 +38,7 @@ export async function POST(req: Request) {
     const parsed = JSON.parse(content);
     return NextResponse.json({
       ...parsed,
-      model: 'llama-3.3-70b',
+      model: 'gemini-3-flash-preview',
       timestamp: new Date().toISOString(),
       provider: 'venice',
       private: true,
@@ -49,7 +49,7 @@ export async function POST(req: Request) {
       confidence: 0.5,
       reasoning: content,
       risk: 5,
-      model: 'llama-3.3-70b',
+      model: 'gemini-3-flash-preview',
       timestamp: new Date().toISOString(),
       provider: 'venice',
       private: true,
