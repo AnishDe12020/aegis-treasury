@@ -225,4 +225,57 @@ contract AegisTreasuryTest is Test {
         assertEq(treasury.getRemainingAllowance(agent, address(usdc)), 100e6);
         assertEq(treasury.getRemainingAllowance(agent2, address(usdc)), 200e6);
     }
+
+    // ─── Batch Query Tests ─────────────────────────────────────────
+
+    function test_getAllAgentAllowances() public {
+        address[] memory targets = new address[](0);
+        treasury.setAgentAllowance(agent, address(usdc), 100e6, 0, targets);
+        treasury.setAgentAllowance(agent2, address(usdc), 200e6, 0, targets);
+
+        (address[] memory addrs, uint256[] memory remaining, bool[] memory active) =
+            treasury.getAllAgentAllowances(address(usdc));
+
+        assertEq(addrs.length, 2);
+        assertEq(remaining[0], 100e6);
+        assertEq(remaining[1], 200e6);
+        assertTrue(active[0]);
+        assertTrue(active[1]);
+    }
+
+    function test_getAllAgentAllowances_withExpired() public {
+        address[] memory targets = new address[](0);
+        treasury.setAgentAllowance(agent, address(usdc), 100e6, block.timestamp + 100, targets);
+        treasury.setAgentAllowance(agent2, address(usdc), 200e6, 0, targets);
+
+        vm.warp(block.timestamp + 200);
+
+        (, uint256[] memory remaining, bool[] memory active) =
+            treasury.getAllAgentAllowances(address(usdc));
+
+        assertEq(remaining[0], 0); // expired
+        assertEq(remaining[1], 200e6); // still active
+        assertFalse(active[0]);
+        assertTrue(active[1]);
+    }
+
+    // ─── Agent Execute Tests ───────────────────────────────────────
+
+    function test_agentExecute_noAllowance() public {
+        treasury.deposit(address(usdc), 1000e6);
+
+        vm.prank(agent);
+        vm.expectRevert("Allowance not active");
+        treasury.agentExecute(address(usdc), recipient, 50e6, "", "No allowance");
+    }
+
+    function test_agentExecute_exceedsAllowance() public {
+        treasury.deposit(address(usdc), 1000e6);
+        address[] memory targets = new address[](0);
+        treasury.setAgentAllowance(agent, address(usdc), 100e6, 0, targets);
+
+        vm.prank(agent);
+        vm.expectRevert("Exceeds allowance");
+        treasury.agentExecute(address(usdc), recipient, 200e6, "", "Too much");
+    }
 }

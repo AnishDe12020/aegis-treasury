@@ -180,4 +180,66 @@ contract AegisTreasury is Ownable, ReentrancyGuard {
     function getAgentCount() external view returns (uint256) {
         return agents.length;
     }
+
+    /// @notice Batch query: get remaining allowances for all agents on a specific token
+    function getAllAgentAllowances(address token)
+        external
+        view
+        returns (address[] memory agentAddresses, uint256[] memory remaining, bool[] memory activeStatus)
+    {
+        uint256 len = agents.length;
+        agentAddresses = new address[](len);
+        remaining = new uint256[](len);
+        activeStatus = new bool[](len);
+
+        for (uint256 i = 0; i < len; i++) {
+            address agent = agents[i];
+            AgentAllowance storage a = allowances[agent][token];
+            agentAddresses[i] = agent;
+            activeStatus[i] = a.active && (a.expiry == 0 || block.timestamp <= a.expiry);
+            remaining[i] = activeStatus[i] ? a.maxAmount - a.spent : 0;
+        }
+    }
+
+    /// @notice Execute a token transfer to a contract with arbitrary calldata (for swaps, etc.)
+    /// @dev The agent must have an allowance for the token being spent.
+    ///      This allows agents to interact with DEXes and other contracts.
+    function agentExecute(
+        address token,
+        address target,
+        uint256 amount,
+        bytes calldata data,
+        string calldata reason
+    ) external nonReentrant {
+        AgentAllowance storage allowance = allowances[msg.sender][token];
+
+        require(allowance.active, "Allowance not active");
+        require(allowance.expiry == 0 || block.timestamp <= allowance.expiry, "Allowance expired");
+        require(allowance.spent + amount <= allowance.maxAmount, "Exceeds allowance");
+        require(deposits[token] >= amount, "Insufficient treasury balance");
+
+        // Check target restrictions
+        if (allowance.allowedTargets.length > 0) {
+            bool targetAllowed = false;
+            for (uint256 i = 0; i < allowance.allowedTargets.length; i++) {
+                if (allowance.allowedTargets[i] == target) {
+                    targetAllowed = true;
+                    break;
+                }
+            }
+            require(targetAllowed, "Target not allowed");
+        }
+
+        allowance.spent += amount;
+        deposits[token] -= amount;
+
+        // Approve the target to spend the token, then call it
+        IERC20(token).safeIncreaseAllowance(target, amount);
+
+        // Execute the call (e.g., a swap on Uniswap)
+        (bool success,) = target.call(data);
+        require(success, "Execution failed");
+
+        emit AgentExecuted(msg.sender, token, target, amount, data, reason);
+    }
 }
