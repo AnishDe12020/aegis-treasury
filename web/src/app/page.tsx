@@ -184,9 +184,11 @@ function DashboardView() {
         <div className="min-h-[340px]">
           <TerminalFeed />
         </div>
-        <div className="space-y-2">
+        <div className="space-y-2 overflow-hidden">
           <StrategyPanel />
-          <VenicePanel />
+          <div className="max-h-[320px] overflow-auto">
+            <VenicePanel />
+          </div>
           <EmergencyControls />
         </div>
       </div>
