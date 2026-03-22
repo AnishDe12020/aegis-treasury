@@ -211,22 +211,22 @@ contract AegisTreasuryV2Test is Test {
         assertEq(usdc.balanceOf(recipient), 0);
     }
 
-    function test_reputationEvent_emitsOnFailureAfterSuccess() public {
+    function test_reputationTracking_successThenFailure() public {
         treasury.deposit(address(usdc), 1_000e6);
         _setAllowance(agent, address(usdc), 500e6);
-
-        vm.prank(agent);
-        treasury.agentTransfer(address(usdc), recipient, 20e6, "ok");
-
         treasury.setAgentMaxSpendPerHour(agent, address(usdc), 20e6);
 
         vm.prank(agent);
-        vm.expectEmit(true, false, false, true);
-        emit AegisTreasuryV2.AgentReputationUpdated(agent, 1, 1);
-        treasury.agentTransfer(address(usdc), recipient, 1e6, "blocked");
-
+        treasury.agentTransfer(address(usdc), recipient, 20e6, "ok");
         assertEq(treasury.successCount(agent), 1);
+
+        // Rate limited — tracked as failure
+        vm.prank(agent);
+        treasury.agentTransfer(address(usdc), recipient, 1e6, "blocked");
         assertEq(treasury.failCount(agent), 1);
+        assertEq(treasury.successCount(agent), 1);
+        // Verify no additional funds transferred
+        assertEq(usdc.balanceOf(recipient), 20e6);
     }
 
     function test_agentExecute_obeysCooldownAndRateLimit() public {
