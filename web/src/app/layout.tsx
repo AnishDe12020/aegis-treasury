@@ -3,10 +3,21 @@ import Providers from "@/components/Providers";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Aegis - Agent Treasury on Base",
-  description: "Scoped, revocable spending authority for AI agents on Base",
+  title: "Aegis — Agent Treasury with Scoped Delegations",
+  description: "Safely delegate spending authority to AI agents on Base",
   icons: {
     icon: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛡️</text></svg>",
+  },
+  openGraph: {
+    title: "Aegis — Agent Treasury with Scoped Delegations",
+    description: "Safely delegate spending authority to AI agents on Base",
+    type: "website",
+    siteName: "Aegis",
+  },
+  twitter: {
+    card: "summary",
+    title: "Aegis — Agent Treasury with Scoped Delegations",
+    description: "Safely delegate spending authority to AI agents on Base",
   },
 };
 

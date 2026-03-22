@@ -35,12 +35,12 @@ function ShieldIcon({ className }: { className?: string }) {
 
 function HeroSection() {
   return (
-    <div className="flex flex-col items-center justify-center px-4 py-24 text-center md:py-32">
-      {/* Floating shield icon */}
+    <div className="hero-section flex flex-col items-center justify-center px-4 py-24 text-center md:py-32">
+      {/* Floating shield icon with animated gradient border */}
       <div className="animate-fade-in mb-8">
         <div className="relative">
           <div
-            className="flex h-24 w-24 items-center justify-center rounded-3xl"
+            className="shield-gradient-border flex h-24 w-24 items-center justify-center rounded-3xl"
             style={{
               background: "linear-gradient(135deg, rgba(59,130,246,0.15) 0%, rgba(139,92,246,0.15) 100%)",
               boxShadow: "0 0 60px rgba(59,130,246,0.15), inset 0 1px 0 rgba(255,255,255,0.1)",
@@ -51,6 +51,13 @@ function HeroSection() {
           {/* Orbiting dot */}
           <div className="absolute -right-1 -top-1 h-3 w-3 rounded-full bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.6)]" />
         </div>
+      </div>
+
+      {/* Powered by Base badge */}
+      <div className="animate-fade-in mb-6 inline-flex items-center gap-2 rounded-full border border-aegis-border px-4 py-1.5 text-xs" style={{ background: "rgba(255,255,255,0.02)" }}>
+        <span className="h-1.5 w-1.5 rounded-full bg-blue-400 shadow-[0_0_6px_rgba(59,130,246,0.5)]" />
+        <span className="text-aegis-text-dim">Powered by</span>
+        <span className="font-semibold text-white">Base</span>
       </div>
 
       {/* Headline */}
@@ -68,12 +75,12 @@ function HeroSection() {
       </p>
 
       {/* CTA */}
-      <div className="animate-fade-in-up-delay-2 mb-16">
+      <div className="animate-fade-in-up-delay-2 mb-16 scroll-mt-24" id="connect">
         <ConnectButton large />
       </div>
 
       {/* Feature cards */}
-      <div className="animate-fade-in-up-delay-3 grid w-full max-w-3xl gap-4 sm:grid-cols-3">
+      <div className="animate-fade-in-up-delay-3 grid w-full max-w-3xl gap-4 sm:grid-cols-3 lg:max-w-5xl lg:grid-cols-3 lg:gap-6">
         {[
           {
             icon: (
@@ -108,7 +115,7 @@ function HeroSection() {
         ].map((feature) => (
           <div
             key={feature.title}
-            className="glass-card group cursor-default p-5 text-left"
+            className="glass-card group cursor-default p-5 text-left lg:p-7"
           >
             <div
               className={`mb-3 flex h-10 w-10 items-center justify-center rounded-xl transition-colors duration-200
@@ -206,6 +213,9 @@ export default function Home() {
 
   return (
     <div className="relative z-10 min-h-screen">
+      {/* Grid pattern overlay */}
+      <div className="grid-overlay" />
+
       {/* Navigation */}
       <nav className="sticky top-0 z-50 border-b border-aegis-border backdrop-blur-xl" style={{ background: "rgba(10,10,15,0.8)" }}>
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-6">

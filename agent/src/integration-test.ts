@@ -14,7 +14,7 @@ dotenv.config();
 
 const TREASURY_ADDRESS: Address = '0x33E42b7db9569fb4f3cd6d68180fcC007AE6ece7';
 const TARGET_AGENT_ADDRESS: Address = '0x8a492261655c48997D79d1d479a7c6E5A32deeD9';
-const USDC_ADDRESS: Address = '0x036CbD53842c5426634e7929541eC2318f3dCF7e';
+const USDC_ADDRESS: Address = (process.env.USDC_ADDRESS as Address) || '0x62932909ab43336B6710444DA8232333157a6f7c';
 const TRANSFER_AMOUNT = parseUnits('0.1', 6);
 
 const color = {
@@ -225,6 +225,9 @@ async function main() {
       if (receipt.status !== 'success') {
         throw new Error(`Transfer reverted in block ${receipt.blockNumber}`);
       }
+
+      // Wait a moment for the RPC node to index the new state
+      await new Promise((resolve) => setTimeout(resolve, 2000));
 
       allowanceAfter = await getRemainingAllowance(
         publicClient,

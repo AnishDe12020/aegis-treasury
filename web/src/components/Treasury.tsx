@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   useAccount,
   useReadContract,
@@ -22,8 +22,10 @@ export default function Treasury() {
   const [withdrawAmount, setWithdrawAmount] = useState("");
   const [activeTab, setActiveTab] = useState<"deposit" | "withdraw">("deposit");
 
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
+
   // Read treasury USDC balance
-  const { data: treasuryBalance, refetch: refetchBalance } = useReadContract({
+  const { data: treasuryBalance, refetch: refetchBalance, isFetched: isBalanceFetched } = useReadContract({
     address: TREASURY_ADDRESS,
     abi: TREASURY_ABI,
     functionName: "deposits",
@@ -58,6 +60,10 @@ export default function Treasury() {
 
   const isOwner =
     address && owner && address.toLowerCase() === owner.toLowerCase();
+
+  useEffect(() => {
+    if (isBalanceFetched) setIsInitialLoad(false);
+  }, [isBalanceFetched]);
 
   // Approve USDC
   const {
@@ -164,10 +170,24 @@ export default function Treasury() {
   };
 
   const formattedTreasuryBalance = treasuryBalance
+    ? Number(formatUnits(treasuryBalance, USDC_DECIMALS)).toLocaleString(undefined, {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      })
+    : "0.00";
+
+  const rawTreasuryBalance = treasuryBalance
     ? formatUnits(treasuryBalance, USDC_DECIMALS)
     : "0";
 
   const formattedUserBalance = userBalance
+    ? Number(formatUnits(userBalance, USDC_DECIMALS)).toLocaleString(undefined, {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      })
+    : "0.00";
+
+  const rawUserBalance = userBalance
     ? formatUnits(userBalance, USDC_DECIMALS)
     : "0";
 
@@ -220,44 +240,53 @@ export default function Treasury() {
       </div>
 
       {/* Balance */}
-      <div
-        className="rounded-xl p-5"
-        style={{
-          background:
-            "linear-gradient(135deg, rgba(59,130,246,0.06) 0%, rgba(139,92,246,0.04) 100%)",
-          border: "1px solid rgba(255,255,255,0.04)",
-        }}
-      >
-        <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.1em] text-aegis-muted">
-          Treasury Balance
-        </p>
-        <p className="stat-number">
-          {Number(formattedTreasuryBalance).toLocaleString(undefined, {
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2,
-          })}
-          <span className="ml-2 text-sm font-medium text-aegis-text-dim">
-            USDC
-          </span>
-        </p>
-        {isConnected && (
-          <div className="mt-3 flex items-center gap-2 text-xs text-aegis-text-dim">
-            <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M21 12a2.25 2.25 0 0 0-2.25-2.25H15a3 3 0 1 1-6 0H5.25A2.25 2.25 0 0 0 3 12m18 0v6a2.25 2.25 0 0 1-2.25 2.25H5.25A2.25 2.25 0 0 1 3 18v-6m18 0V9M3 12V9m18 0a2.25 2.25 0 0 0-2.25-2.25H5.25A2.25 2.25 0 0 0 3 9m18 0V6a2.25 2.25 0 0 0-2.25-2.25H5.25A2.25 2.25 0 0 0 3 6v3" />
-            </svg>
-            <span>
-              Your wallet:{" "}
-              <span className="font-medium text-aegis-text">
-                {Number(formattedUserBalance).toLocaleString(undefined, {
-                  minimumFractionDigits: 2,
-                  maximumFractionDigits: 2,
-                })}{" "}
-                USDC
-              </span>
+      {isInitialLoad ? (
+        <div
+          className="rounded-xl p-5"
+          style={{
+            background:
+              "linear-gradient(135deg, rgba(59,130,246,0.06) 0%, rgba(139,92,246,0.04) 100%)",
+            border: "1px solid rgba(255,255,255,0.04)",
+          }}
+        >
+          <div className="skeleton mb-3 h-3 w-28" />
+          <div className="skeleton mb-2 h-8 w-40" />
+          <div className="skeleton h-4 w-48" />
+        </div>
+      ) : (
+        <div
+          className="rounded-xl p-5"
+          style={{
+            background:
+              "linear-gradient(135deg, rgba(59,130,246,0.06) 0%, rgba(139,92,246,0.04) 100%)",
+            border: "1px solid rgba(255,255,255,0.04)",
+          }}
+        >
+          <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.1em] text-aegis-muted">
+            Treasury Balance
+          </p>
+          <p className="stat-number">
+            {formattedTreasuryBalance}
+            <span className="ml-2 text-sm font-medium text-aegis-text-dim">
+              USDC
             </span>
-          </div>
-        )}
-      </div>
+          </p>
+          {isConnected && (
+            <div className="mt-3 flex items-center gap-2 text-xs text-aegis-text-dim">
+              <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M21 12a2.25 2.25 0 0 0-2.25-2.25H15a3 3 0 1 1-6 0H5.25A2.25 2.25 0 0 0 3 12m18 0v6a2.25 2.25 0 0 1-2.25 2.25H5.25A2.25 2.25 0 0 1 3 18v-6m18 0V9M3 12V9m18 0a2.25 2.25 0 0 0-2.25-2.25H5.25A2.25 2.25 0 0 0 3 9m18 0V6a2.25 2.25 0 0 0-2.25-2.25H5.25A2.25 2.25 0 0 0 3 6v3" />
+              </svg>
+              <span>
+                Your wallet:{" "}
+                <span className="font-medium text-aegis-text">
+                  {formattedUserBalance}{" "}
+                  USDC
+                </span>
+              </span>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Deposit / Withdraw tabs */}
       {isConnected && isOwner && (

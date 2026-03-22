@@ -14,6 +14,7 @@
 
 html {
   color-scheme: dark;
+  scroll-behavior: smooth;
 }
 
 body {
@@ -46,6 +47,21 @@ body::before {
       rgba(59, 130, 246, 0.02) 0%,
       transparent 50%
     );
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Subtle grid pattern overlay */
+body .grid-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.015) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.015) 1px, transparent 1px);
+  background-size: 60px 60px;
   pointer-events: none;
   z-index: 0;
 }
@@ -142,6 +158,7 @@ input[type="number"] {
   .glass-card:hover {
     border-color: rgba(255, 255, 255, 0.1);
     box-shadow: 0 0 30px rgba(59, 130, 246, 0.05);
+    transform: translateY(-1px) scale(1.005);
   }
 
   .glass-card-glow {
@@ -229,4 +246,83 @@ input[type="number"] {
     @apply text-3xl font-bold tracking-tight text-white;
     font-variant-numeric: tabular-nums;
   }
+
+  /* Loading skeleton */
+  .skeleton {
+    @apply rounded-lg;
+    background: linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0.03) 25%,
+      rgba(255, 255, 255, 0.06) 50%,
+      rgba(255, 255, 255, 0.03) 75%
+    );
+    background-size: 200% 100%;
+    animation: skeleton-shimmer 1.5s ease-in-out infinite;
+  }
+}
+
+/* Animated gradient border for shield icon */
+@keyframes gradient-border-spin {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+.shield-gradient-border {
+  position: relative;
+}
+
+.shield-gradient-border::before {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  border-radius: 1.75rem;
+  padding: 2px;
+  background: linear-gradient(
+    270deg,
+    #3b82f6,
+    #8b5cf6,
+    #06b6d4,
+    #8b5cf6,
+    #3b82f6
+  );
+  background-size: 300% 300%;
+  animation: gradient-border-spin 4s ease infinite;
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+/* Skeleton shimmer animation */
+@keyframes skeleton-shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+/* Smooth page transitions */
+@keyframes page-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+main,
+.hero-section {
+  animation: page-fade-in 0.4s ease-out;
 }
