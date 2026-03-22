@@ -247,6 +247,35 @@ input[type="number"] {
     font-variant-numeric: tabular-nums;
   }
 
+  /* Terminal panel styles */
+  .terminal-panel {
+    background: rgba(10, 10, 18, 0.85);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+
+  .terminal-header {
+    display: flex;
+    align-items: center;
+    padding: 8px 12px;
+    background: rgba(255, 255, 255, 0.02);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  }
+
+  .price-up {
+    color: #22c55e;
+  }
+
+  .price-down {
+    color: #ef4444;
+  }
+
+  .mono-num {
+    @apply font-mono;
+    font-variant-numeric: tabular-nums;
+  }
+
   /* Loading skeleton */
   .skeleton {
     @apply rounded-lg;

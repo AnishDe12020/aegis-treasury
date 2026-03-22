@@ -3,9 +3,12 @@
 import ConnectButton from "@/components/ConnectButton";
 import Treasury from "@/components/Treasury";
 import CreateAllowance from "@/components/CreateAllowance";
-import AllowanceList from "@/components/AllowanceList";
-import AgentActivity from "@/components/AgentActivity";
 import EmergencyControls from "@/components/EmergencyControls";
+import TokenScreener from "@/components/TokenScreener";
+import PriceChart from "@/components/PriceChart";
+import OrderBook from "@/components/OrderBook";
+import TerminalFeed from "@/components/TerminalFeed";
+import StrategyPanel from "@/components/StrategyPanel";
 import { useAccount, useReadContract } from "wagmi";
 import {
   TREASURY_ADDRESS,
@@ -14,6 +17,7 @@ import {
   TREASURY_ABI,
 } from "@/lib/contracts";
 import { formatUnits } from "viem";
+import { useState } from "react";
 
 function ShieldIcon({ className }: { className?: string }) {
   return (
@@ -139,77 +143,48 @@ function HeroSection() {
   );
 }
 
-function DashboardStats() {
-  const { data: treasuryBalance } = useReadContract({
-    address: TREASURY_ADDRESS,
-    abi: TREASURY_ABI,
-    functionName: "deposits",
-    args: [USDC_ADDRESS],
-  });
+type NavTab = 'dashboard' | 'screener' | 'terminal';
 
-  const { data: agentCount } = useReadContract({
-    address: TREASURY_ADDRESS,
-    abi: TREASURY_ABI,
-    functionName: "getAgentCount",
-  });
-
-  const formattedBalance = treasuryBalance
-    ? Number(formatUnits(treasuryBalance, USDC_DECIMALS)).toLocaleString(
-        undefined,
-        { minimumFractionDigits: 2, maximumFractionDigits: 2 }
-      )
-    : "0.00";
+function TradingTerminal() {
+  const [activeTab, setActiveTab] = useState<NavTab>('dashboard');
 
   return (
-    <div className="animate-fade-in-up mb-8 grid gap-4 sm:grid-cols-3">
-      {[
-        {
-          label: "Treasury Balance",
-          value: formattedBalance,
-          suffix: "USDC",
-          color: "from-blue-500/20 to-blue-500/5",
-          dotColor: "bg-blue-400",
-        },
-        {
-          label: "Active Agents",
-          value: agentCount !== undefined ? agentCount.toString() : "0",
-          suffix: "",
-          color: "from-purple-500/20 to-purple-500/5",
-          dotColor: "bg-purple-400",
-        },
-        {
-          label: "Network",
-          value: "Base",
-          suffix: "Sepolia",
-          color: "from-emerald-500/20 to-emerald-500/5",
-          dotColor: "bg-emerald-400",
-        },
-      ].map((stat) => (
-        <div key={stat.label} className="glass-card p-5">
-          <div className="mb-3 flex items-center gap-2">
-            <span className={`h-1.5 w-1.5 rounded-full ${stat.dotColor}`} />
-            <span className="text-[11px] font-semibold uppercase tracking-[0.1em] text-aegis-muted">
-              {stat.label}
-            </span>
-          </div>
-          <div className="flex items-baseline gap-2">
-            <span className="text-2xl font-bold tracking-tight text-white">
-              {stat.value}
-            </span>
-            {stat.suffix && (
-              <span className="text-sm font-medium text-aegis-text-dim">
-                {stat.suffix}
-              </span>
-            )}
-          </div>
+    <main className="mx-auto max-w-[1600px] px-3 py-3">
+      {/* Trading terminal grid */}
+      <div className="grid grid-cols-1 gap-2 lg:grid-cols-[2fr_1fr]">
+        {/* Row 1: Chart + Screener */}
+        <div className="min-h-[360px]">
+          <PriceChart />
         </div>
-      ))}
-    </div>
+        <div className="min-h-[360px]">
+          <TokenScreener />
+        </div>
+
+        {/* Row 2: Treasury/Deposit/Withdraw + OrderBook */}
+        <div className="space-y-2">
+          <Treasury />
+          <CreateAllowance />
+        </div>
+        <div className="min-h-[300px]">
+          <OrderBook />
+        </div>
+
+        {/* Row 3: Terminal Feed + Strategy Panel + Emergency */}
+        <div className="min-h-[340px]">
+          <TerminalFeed />
+        </div>
+        <div className="space-y-2">
+          <StrategyPanel />
+          <EmergencyControls />
+        </div>
+      </div>
+    </main>
   );
 }
 
 export default function Home() {
   const { isConnected } = useAccount();
+  const [activeNav, setActiveNav] = useState('dashboard');
 
   return (
     <div className="relative z-10 min-h-screen">
@@ -218,35 +193,49 @@ export default function Home() {
 
       {/* Navigation */}
       <nav className="sticky top-0 z-50 border-b border-aegis-border backdrop-blur-xl" style={{ background: "rgba(10,10,15,0.8)" }}>
-        <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-6">
-          <div className="flex items-center gap-8">
+        <div className={`mx-auto flex h-12 items-center justify-between px-4 ${isConnected ? 'max-w-[1600px]' : 'max-w-6xl'}`}>
+          <div className="flex items-center gap-6">
             {/* Logo */}
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2.5">
               <div
-                className="flex h-9 w-9 items-center justify-center rounded-xl"
+                className="flex h-7 w-7 items-center justify-center rounded-lg"
                 style={{
                   background: "linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)",
-                  boxShadow: "0 0 16px rgba(59,130,246,0.3)",
+                  boxShadow: "0 0 12px rgba(59,130,246,0.3)",
                 }}
               >
-                <ShieldIcon className="h-5 w-5 text-white" />
+                <ShieldIcon className="h-4 w-4 text-white" />
               </div>
-              <span className="text-lg font-bold tracking-tight text-white">
+              <span className="text-sm font-bold tracking-tight text-white">
                 Aegis
               </span>
             </div>
 
             {/* Nav links */}
             {isConnected && (
-              <div className="hidden items-center gap-1 sm:flex">
-                <a href="#" className="rounded-lg px-3 py-1.5 text-sm font-medium text-white transition-colors">
-                  Dashboard
-                </a>
+              <div className="hidden items-center gap-0.5 sm:flex">
+                {[
+                  { key: 'dashboard', label: 'Dashboard' },
+                  { key: 'screener', label: 'Screener' },
+                  { key: 'terminal', label: 'Terminal' },
+                ].map(item => (
+                  <button
+                    key={item.key}
+                    onClick={() => setActiveNav(item.key)}
+                    className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
+                      activeNav === item.key
+                        ? 'bg-[rgba(59,130,246,0.1)] text-white'
+                        : 'text-aegis-text-dim hover:text-white'
+                    }`}
+                  >
+                    {item.label}
+                  </button>
+                ))}
                 <a
                   href={`https://sepolia.basescan.org/address/${TREASURY_ADDRESS}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="rounded-lg px-3 py-1.5 text-sm font-medium text-aegis-text-dim transition-colors hover:text-white"
+                  className="rounded-md px-2.5 py-1 text-xs font-medium text-aegis-text-dim transition-colors hover:text-white"
                 >
                   Contract
                 </a>
@@ -254,9 +243,9 @@ export default function Home() {
             )}
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             {/* Network badge */}
-            <div className="hidden items-center gap-2 rounded-full border border-aegis-border px-3 py-1.5 text-xs sm:flex" style={{ background: "rgba(255,255,255,0.02)" }}>
+            <div className="hidden items-center gap-1.5 rounded-md border border-aegis-border px-2 py-1 text-[10px] sm:flex" style={{ background: "rgba(255,255,255,0.02)" }}>
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.5)]" />
               <span className="text-aegis-text-dim">Base Sepolia</span>
             </div>
@@ -269,34 +258,17 @@ export default function Home() {
       {!isConnected ? (
         <HeroSection />
       ) : (
-        <main className="mx-auto max-w-6xl px-6 py-8">
-          <DashboardStats />
-          <div className="grid gap-6 lg:grid-cols-2">
-            <div className="space-y-6">
-              <Treasury />
-              <CreateAllowance />
-            </div>
-            <div className="space-y-6">
-              <AllowanceList />
-              <AgentActivity />
-            </div>
-          </div>
-
-          {/* Emergency Controls */}
-          <div className="mt-6">
-            <EmergencyControls />
-          </div>
-        </main>
+        <TradingTerminal />
       )}
 
       {/* Footer */}
-      <footer className="mt-20 border-t border-aegis-border py-8">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-6">
-          <div className="flex items-center gap-2 text-xs text-aegis-muted">
-            <ShieldIcon className="h-3.5 w-3.5" />
+      <footer className="mt-8 border-t border-aegis-border py-4">
+        <div className={`mx-auto flex items-center justify-between px-4 ${isConnected ? 'max-w-[1600px]' : 'max-w-6xl'}`}>
+          <div className="flex items-center gap-2 text-[10px] text-aegis-muted">
+            <ShieldIcon className="h-3 w-3" />
             <span>Aegis Treasury</span>
           </div>
-          <div className="flex items-center gap-4 text-xs text-aegis-muted">
+          <div className="flex items-center gap-3 text-[10px] text-aegis-muted">
             <a
               href={`https://sepolia.basescan.org/address/${TREASURY_ADDRESS}`}
               target="_blank"
