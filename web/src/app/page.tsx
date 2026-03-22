@@ -9,6 +9,7 @@ import PriceChart from "@/components/PriceChart";
 import OrderBook from "@/components/OrderBook";
 import TerminalFeed from "@/components/TerminalFeed";
 import StrategyPanel from "@/components/StrategyPanel";
+import VenicePanel from "@/components/VenicePanel";
 import { useAccount, useReadContract } from "wagmi";
 import {
   TREASURY_ADDRESS,
@@ -145,46 +146,68 @@ function HeroSection() {
 
 type NavTab = 'dashboard' | 'screener' | 'terminal';
 
-function TradingTerminal() {
-  const [activeTab, setActiveTab] = useState<NavTab>('dashboard');
+function DashboardView() {
+  return (
+    <div className="grid grid-cols-1 gap-2 lg:grid-cols-[2fr_1fr]">
+      {/* Row 1: Chart + Screener */}
+      <div className="min-h-[360px]">
+        <PriceChart />
+      </div>
+      <div className="min-h-[360px]">
+        <TokenScreener />
+      </div>
 
+      {/* Row 2: Treasury/Deposit/Withdraw + OrderBook */}
+      <div className="space-y-2">
+        <Treasury />
+        <CreateAllowance />
+      </div>
+      <div className="min-h-[300px]">
+        <OrderBook />
+      </div>
+
+      {/* Row 3: Terminal Feed + Strategy Panel + Emergency */}
+      <div className="min-h-[340px]">
+        <TerminalFeed />
+      </div>
+      <div className="space-y-2">
+        <StrategyPanel />
+        <VenicePanel />
+        <EmergencyControls />
+      </div>
+    </div>
+  );
+}
+
+function ScreenerView() {
+  return (
+    <div className="min-h-[600px]">
+      <TokenScreener />
+    </div>
+  );
+}
+
+function TerminalView() {
+  return (
+    <div className="min-h-[600px]">
+      <TerminalFeed maxHeight="600px" />
+    </div>
+  );
+}
+
+function TradingTerminal({ activeTab }: { activeTab: NavTab }) {
   return (
     <main className="mx-auto max-w-[1600px] px-3 py-3">
-      {/* Trading terminal grid */}
-      <div className="grid grid-cols-1 gap-2 lg:grid-cols-[2fr_1fr]">
-        {/* Row 1: Chart + Screener */}
-        <div className="min-h-[360px]">
-          <PriceChart />
-        </div>
-        <div className="min-h-[360px]">
-          <TokenScreener />
-        </div>
-
-        {/* Row 2: Treasury/Deposit/Withdraw + OrderBook */}
-        <div className="space-y-2">
-          <Treasury />
-          <CreateAllowance />
-        </div>
-        <div className="min-h-[300px]">
-          <OrderBook />
-        </div>
-
-        {/* Row 3: Terminal Feed + Strategy Panel + Emergency */}
-        <div className="min-h-[340px]">
-          <TerminalFeed />
-        </div>
-        <div className="space-y-2">
-          <StrategyPanel />
-          <EmergencyControls />
-        </div>
-      </div>
+      {activeTab === 'dashboard' && <DashboardView />}
+      {activeTab === 'screener' && <ScreenerView />}
+      {activeTab === 'terminal' && <TerminalView />}
     </main>
   );
 }
 
 export default function Home() {
   const { isConnected } = useAccount();
-  const [activeNav, setActiveNav] = useState('dashboard');
+  const [activeNav, setActiveNav] = useState<NavTab>('dashboard');
 
   return (
     <div className="relative z-10 min-h-screen">
@@ -215,20 +238,23 @@ export default function Home() {
             {isConnected && (
               <div className="hidden items-center gap-0.5 sm:flex">
                 {[
-                  { key: 'dashboard', label: 'Dashboard' },
-                  { key: 'screener', label: 'Screener' },
-                  { key: 'terminal', label: 'Terminal' },
+                  { key: 'dashboard' as NavTab, label: 'Dashboard' },
+                  { key: 'screener' as NavTab, label: 'Screener' },
+                  { key: 'terminal' as NavTab, label: 'Terminal' },
                 ].map(item => (
                   <button
                     key={item.key}
                     onClick={() => setActiveNav(item.key)}
-                    className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
+                    className={`relative rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
                       activeNav === item.key
                         ? 'bg-[rgba(59,130,246,0.1)] text-white'
                         : 'text-aegis-text-dim hover:text-white'
                     }`}
                   >
                     {item.label}
+                    {activeNav === item.key && (
+                      <span className="absolute bottom-[-9px] left-0 right-0 h-[2px] bg-blue-400 rounded-t" />
+                    )}
                   </button>
                 ))}
                 <a
@@ -258,7 +284,7 @@ export default function Home() {
       {!isConnected ? (
         <HeroSection />
       ) : (
-        <TradingTerminal />
+        <TradingTerminal activeTab={activeNav} />
       )}
 
       {/* Footer */}

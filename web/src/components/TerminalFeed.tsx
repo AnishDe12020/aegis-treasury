@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { usePublicClient } from 'wagmi';
 import { formatUnits, parseAbiItem } from 'viem';
 import { TREASURY_ADDRESS, USDC_DECIMALS } from '@/lib/contracts';
@@ -35,7 +35,7 @@ function nowTimestamp() {
   return d.toTimeString().slice(0, 8);
 }
 
-export default function TerminalFeed() {
+export default function TerminalFeed({ maxHeight }: { maxHeight?: string }) {
   const publicClient = usePublicClient();
   const [lines, setLines] = useState<FeedLine[]>([
     { id: 'boot-0', timestamp: nowTimestamp(), message: 'Aegis Terminal v2.0 initialized', color: 'cyan' },
@@ -45,65 +45,99 @@ export default function TerminalFeed() {
   ]);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  const addLine = (line: Omit<FeedLine, 'id' | 'timestamp'>) => {
+  const addLine = useCallback((line: Omit<FeedLine, 'id' | 'timestamp'>) => {
     setLines(prev => {
       const next = [...prev, { ...line, id: `${Date.now()}-${Math.random()}`, timestamp: nowTimestamp() }];
       return next.slice(-50);
     });
-  };
+  }, []);
+
+  const addLines = useCallback((newLines: Omit<FeedLine, 'id' | 'timestamp'>[]) => {
+    setLines(prev => {
+      const mapped = newLines.map(line => ({
+        ...line,
+        id: `${Date.now()}-${Math.random()}`,
+        timestamp: nowTimestamp(),
+      }));
+      const next = [...prev, ...mapped];
+      return next.slice(-50);
+    });
+  }, []);
 
   useEffect(() => {
     if (!publicClient) return;
 
+    type EventEntry = { blockNumber: bigint; line: Omit<FeedLine, 'id' | 'timestamp'> };
+
+    const fetchLogs = async (fromBlock: bigint, toBlock: bigint): Promise<EventEntry[]> => {
+      const [executedLogs, setLogs, revokedLogs, depositLogs, withdrawLogs] = await Promise.all([
+        publicClient.getLogs({ address: TREASURY_ADDRESS, event: EVENT_SIGNATURES.executed, fromBlock, toBlock }),
+        publicClient.getLogs({ address: TREASURY_ADDRESS, event: EVENT_SIGNATURES.allowanceSet, fromBlock, toBlock }),
+        publicClient.getLogs({ address: TREASURY_ADDRESS, event: EVENT_SIGNATURES.allowanceRevoked, fromBlock, toBlock }),
+        publicClient.getLogs({ address: TREASURY_ADDRESS, event: EVENT_SIGNATURES.deposited, fromBlock, toBlock }),
+        publicClient.getLogs({ address: TREASURY_ADDRESS, event: EVENT_SIGNATURES.withdrawn, fromBlock, toBlock }),
+      ]);
+
+      const entries: EventEntry[] = [];
+
+      for (const log of executedLogs) {
+        const amt = Number(formatUnits(log.args.amount ?? 0n, USDC_DECIMALS)).toFixed(2);
+        entries.push({
+          blockNumber: log.blockNumber,
+          line: { message: `TRANSFER ${shortenAddr(log.args.agent ?? '')} -> ${shortenAddr(log.args.target ?? '')} ${amt} USDC "${log.args.reason ?? ''}"`, color: 'green' },
+        });
+      }
+      for (const log of setLogs) {
+        const amt = Number(formatUnits(log.args.maxAmount ?? 0n, USDC_DECIMALS)).toFixed(2);
+        entries.push({
+          blockNumber: log.blockNumber,
+          line: { message: `ALLOWANCE SET ${shortenAddr(log.args.agent ?? '')} max=${amt} USDC`, color: 'yellow' },
+        });
+      }
+      for (const log of revokedLogs) {
+        entries.push({
+          blockNumber: log.blockNumber,
+          line: { message: `REVOKED agent=${shortenAddr(log.args.agent ?? '')}`, color: 'red' },
+        });
+      }
+      for (const log of depositLogs) {
+        const amt = Number(formatUnits(log.args.amount ?? 0n, USDC_DECIMALS)).toFixed(2);
+        entries.push({
+          blockNumber: log.blockNumber,
+          line: { message: `DEPOSIT ${amt} USDC to treasury`, color: 'green' },
+        });
+      }
+      for (const log of withdrawLogs) {
+        const amt = Number(formatUnits(log.args.amount ?? 0n, USDC_DECIMALS)).toFixed(2);
+        entries.push({
+          blockNumber: log.blockNumber,
+          line: { message: `WITHDRAW ${amt} USDC from treasury`, color: 'yellow' },
+        });
+      }
+
+      return entries;
+    };
+
     const fetchHistorical = async () => {
       try {
         const currentBlock = await publicClient.getBlockNumber();
-        const fromBlock = currentBlock > 50000n ? currentBlock - 50000n : 0n;
+        // Use 5,000 block range max (safe for public RPCs)
+        const fromBlock = currentBlock > 5000n ? currentBlock - 5000n : 0n;
 
-        const [executedLogs, setLogs, revokedLogs, depositLogs, withdrawLogs] = await Promise.all([
-          publicClient.getLogs({ address: TREASURY_ADDRESS, event: EVENT_SIGNATURES.executed, fromBlock, toBlock: 'latest' }),
-          publicClient.getLogs({ address: TREASURY_ADDRESS, event: EVENT_SIGNATURES.allowanceSet, fromBlock, toBlock: 'latest' }),
-          publicClient.getLogs({ address: TREASURY_ADDRESS, event: EVENT_SIGNATURES.allowanceRevoked, fromBlock, toBlock: 'latest' }),
-          publicClient.getLogs({ address: TREASURY_ADDRESS, event: EVENT_SIGNATURES.deposited, fromBlock, toBlock: 'latest' }),
-          publicClient.getLogs({ address: TREASURY_ADDRESS, event: EVENT_SIGNATURES.withdrawn, fromBlock, toBlock: 'latest' }),
-        ]);
-
-        type EventEntry = { blockNumber: bigint; line: Omit<FeedLine, 'id' | 'timestamp'> };
-        const entries: EventEntry[] = [];
-
-        for (const log of executedLogs) {
-          const amt = Number(formatUnits(log.args.amount ?? 0n, USDC_DECIMALS)).toFixed(2);
-          entries.push({
-            blockNumber: log.blockNumber,
-            line: { message: `TRANSFER ${shortenAddr(log.args.agent ?? '')} -> ${shortenAddr(log.args.target ?? '')} ${amt} USDC "${log.args.reason ?? ''}"`, color: 'green' },
-          });
-        }
-        for (const log of setLogs) {
-          const amt = Number(formatUnits(log.args.maxAmount ?? 0n, USDC_DECIMALS)).toFixed(2);
-          entries.push({
-            blockNumber: log.blockNumber,
-            line: { message: `ALLOWANCE SET ${shortenAddr(log.args.agent ?? '')} max=${amt} USDC`, color: 'yellow' },
-          });
-        }
-        for (const log of revokedLogs) {
-          entries.push({
-            blockNumber: log.blockNumber,
-            line: { message: `REVOKED agent=${shortenAddr(log.args.agent ?? '')}`, color: 'red' },
-          });
-        }
-        for (const log of depositLogs) {
-          const amt = Number(formatUnits(log.args.amount ?? 0n, USDC_DECIMALS)).toFixed(2);
-          entries.push({
-            blockNumber: log.blockNumber,
-            line: { message: `DEPOSIT ${amt} USDC to treasury`, color: 'green' },
-          });
-        }
-        for (const log of withdrawLogs) {
-          const amt = Number(formatUnits(log.args.amount ?? 0n, USDC_DECIMALS)).toFixed(2);
-          entries.push({
-            blockNumber: log.blockNumber,
-            line: { message: `WITHDRAW ${amt} USDC from treasury`, color: 'yellow' },
-          });
+        let entries: EventEntry[];
+        try {
+          entries = await fetchLogs(fromBlock, currentBlock);
+        } catch {
+          // Fallback to even smaller range (1,000 blocks)
+          try {
+            const smallerFrom = currentBlock > 1000n ? currentBlock - 1000n : 0n;
+            addLine({ message: 'Retrying with smaller block range...', color: 'cyan' });
+            entries = await fetchLogs(smallerFrom, currentBlock);
+          } catch {
+            // Both failed — show graceful message, rely on real-time watcher
+            addLine({ message: 'Unable to load historical events \u2014 watching for new ones', color: 'yellow' });
+            return;
+          }
         }
 
         entries.sort((a, b) => (a.blockNumber < b.blockNumber ? -1 : a.blockNumber > b.blockNumber ? 1 : 0));
@@ -111,19 +145,90 @@ export default function TerminalFeed() {
         const recent = entries.slice(-40);
         if (recent.length > 0) {
           addLine({ message: `Loaded ${entries.length} historical events`, color: 'cyan' });
-          for (const entry of recent) {
-            addLine(entry.line);
-          }
+          addLines(recent.map(e => e.line));
         } else {
           addLine({ message: 'No historical events found', color: 'cyan' });
         }
       } catch (err) {
-        addLine({ message: `Error fetching events: ${(err as Error).message?.slice(0, 60)}`, color: 'red' });
+        addLine({ message: 'Unable to load historical events \u2014 watching for new ones', color: 'yellow' });
       }
     };
 
     fetchHistorical();
-  }, [publicClient]);
+
+    // Watch for real-time events going forward
+    const unwatchExecuted = publicClient.watchContractEvent({
+      address: TREASURY_ADDRESS,
+      abi: [EVENT_SIGNATURES.executed],
+      eventName: 'AgentExecuted',
+      onLogs: (logs) => {
+        for (const log of logs) {
+          const args = log.args as { agent?: string; target?: string; amount?: bigint; reason?: string };
+          const amt = Number(formatUnits(args.amount ?? 0n, USDC_DECIMALS)).toFixed(2);
+          addLine({ message: `TRANSFER ${shortenAddr(args.agent ?? '')} -> ${shortenAddr(args.target ?? '')} ${amt} USDC "${args.reason ?? ''}"`, color: 'green' });
+        }
+      },
+    });
+
+    const unwatchDeposited = publicClient.watchContractEvent({
+      address: TREASURY_ADDRESS,
+      abi: [EVENT_SIGNATURES.deposited],
+      eventName: 'Deposited',
+      onLogs: (logs) => {
+        for (const log of logs) {
+          const args = log.args as { amount?: bigint };
+          const amt = Number(formatUnits(args.amount ?? 0n, USDC_DECIMALS)).toFixed(2);
+          addLine({ message: `DEPOSIT ${amt} USDC to treasury`, color: 'green' });
+        }
+      },
+    });
+
+    const unwatchWithdrawn = publicClient.watchContractEvent({
+      address: TREASURY_ADDRESS,
+      abi: [EVENT_SIGNATURES.withdrawn],
+      eventName: 'Withdrawn',
+      onLogs: (logs) => {
+        for (const log of logs) {
+          const args = log.args as { amount?: bigint };
+          const amt = Number(formatUnits(args.amount ?? 0n, USDC_DECIMALS)).toFixed(2);
+          addLine({ message: `WITHDRAW ${amt} USDC from treasury`, color: 'yellow' });
+        }
+      },
+    });
+
+    const unwatchAllowanceSet = publicClient.watchContractEvent({
+      address: TREASURY_ADDRESS,
+      abi: [EVENT_SIGNATURES.allowanceSet],
+      eventName: 'AgentAllowanceSet',
+      onLogs: (logs) => {
+        for (const log of logs) {
+          const args = log.args as { agent?: string; maxAmount?: bigint };
+          const amt = Number(formatUnits(args.maxAmount ?? 0n, USDC_DECIMALS)).toFixed(2);
+          addLine({ message: `ALLOWANCE SET ${shortenAddr(args.agent ?? '')} max=${amt} USDC`, color: 'yellow' });
+        }
+      },
+    });
+
+    const unwatchRevoked = publicClient.watchContractEvent({
+      address: TREASURY_ADDRESS,
+      abi: [EVENT_SIGNATURES.allowanceRevoked],
+      eventName: 'AgentAllowanceRevoked',
+      onLogs: (logs) => {
+        for (const log of logs) {
+          const args = log.args as { agent?: string };
+          addLine({ message: `REVOKED agent=${shortenAddr(args.agent ?? '')}`, color: 'red' });
+        }
+      },
+    });
+
+    return () => {
+      unwatchExecuted();
+      unwatchDeposited();
+      unwatchWithdrawn();
+      unwatchAllowanceSet();
+      unwatchRevoked();
+    };
+  }, [publicClient, addLine, addLines]);
 
   // Auto-scroll
   useEffect(() => {
@@ -148,7 +253,7 @@ export default function TerminalFeed() {
       <div
         ref={scrollRef}
         className="flex-1 overflow-auto p-3 font-mono text-[11px] leading-5"
-        style={{ maxHeight: '320px' }}
+        style={{ maxHeight: maxHeight ?? '320px' }}
       >
         {lines.map(line => (
           <div key={line.id} className="whitespace-nowrap">
