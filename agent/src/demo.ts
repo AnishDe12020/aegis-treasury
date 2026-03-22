@@ -96,7 +96,7 @@ async function main() {
     `- Recipient: ${recipientAddress}`,
     'Recommend one action: transfer, hold, or rebalance.',
   ].join('\n');
-  const strategy = await analyzeStrategy(venice, context, process.env.VENICE_MODEL || 'llama-3.3-70b');
+  const strategy = await analyzeStrategy(venice, context, process.env.VENICE_MODEL || 'gemini-3-flash-preview');
 
   info(`Action: ${strategy.action}`);
   info(`Reasoning: ${strategy.reasoning}`);

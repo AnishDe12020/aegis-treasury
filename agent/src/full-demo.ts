@@ -202,7 +202,7 @@ async function main() {
   );
 
   info('Calling Venice AI with detailed market context...');
-  info(`Model: ${process.env.VENICE_MODEL || 'llama-3.3-70b'} (private inference)`);
+  info(`Model: ${process.env.VENICE_MODEL || 'gemini-3-flash-preview'} (private inference)`);
 
   const context = [
     'Treasury state for Aegis autonomous agent:',
@@ -224,7 +224,7 @@ async function main() {
   const strategy = await analyzeStrategy(
     venice,
     context,
-    process.env.VENICE_MODEL || 'llama-3.3-70b',
+    process.env.VENICE_MODEL || 'gemini-3-flash-preview',
   );
 
   await sleep(500);

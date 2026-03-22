@@ -179,7 +179,7 @@ async function main() {
       const analysis = await analyzeStrategy(
         veniceClient,
         context,
-        process.env.VENICE_MODEL || 'llama-3.3-70b',
+        process.env.VENICE_MODEL || 'gemini-3-flash-preview',
       );
 
       return `action=${analysis.action}, confidence=${(analysis.confidence * 100).toFixed(1)}%`;

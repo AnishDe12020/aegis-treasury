@@ -114,7 +114,7 @@ export function loadConfig(): AgentConfig {
     usdcAddress: (process.env.USDC_ADDRESS ?? DEFAULT_USDC) as Address,
     recipientAddress: process.env.RECIPIENT_ADDRESS as Address | undefined,
     veniceApiKey: process.env.VENICE_API_KEY ?? '',
-    veniceModel: process.env.VENICE_MODEL ?? 'llama-3.3-70b',
+    veniceModel: process.env.VENICE_MODEL ?? 'gemini-3-flash-preview',
     strategy: parseStrategy(process.env.AGENT_STRATEGY, 'dca'),
     dryRun: parseBoolean(process.env.DRY_RUN, true),
     rebalanceTokenAddress: (process.env.REBALANCE_TOKEN_ADDRESS ?? WETH_ADDRESS) as Address,

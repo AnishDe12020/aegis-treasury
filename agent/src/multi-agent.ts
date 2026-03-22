@@ -333,7 +333,7 @@ export class OrchestratorAgent {
     const strategy = await analyzeStrategy(
       this.veniceClient,
       context,
-      this.config.veniceModel ?? 'llama-3.3-70b',
+      this.config.veniceModel ?? 'gemini-3-flash-preview',
     );
 
     this.log(
@@ -525,7 +525,7 @@ export async function runMultiAgentDemo() {
         | undefined,
       delegatorPrivateKey: process.env.DELEGATOR_PRIVATE_KEY as `0x${string}` | undefined,
       veniceApiKey: process.env.VENICE_API_KEY || '',
-      veniceModel: process.env.VENICE_MODEL || 'llama-3.3-70b',
+      veniceModel: process.env.VENICE_MODEL || 'gemini-3-flash-preview',
       dcaChunks: Math.floor(parsePositiveNumber(process.env.DCA_CHUNKS, 4)),
       dcaIntervalMs: Math.floor(parsePositiveNumber(process.env.DCA_INTERVAL_MS, 60_000)),
       momentumFeeTier: Math.floor(parsePositiveNumber(process.env.MOMENTUM_FEE_TIER, 3000)),
