@@ -134,7 +134,7 @@ export default function VenicePanel() {
           </span>
         </div>
         <span className="text-[10px] text-aegis-muted font-mono">
-          {analysis?.model || 'llama-3.3-70b'}
+          {analysis?.model || 'gemini-3-flash-preview'}
         </span>
       </div>
 

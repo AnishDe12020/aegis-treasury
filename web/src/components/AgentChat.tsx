@@ -142,7 +142,7 @@ export default function AgentChat() {
             </span>
           )}
         </div>
-        <span className="text-[10px] text-aegis-muted font-mono">venice / llama-3.3-70b</span>
+        <span className="text-[10px] text-aegis-muted font-mono">venice / gemini-3-flash (private)</span>
       </div>
 
       {/* Messages */}
