@@ -1,5 +1,5 @@
 export * from './lib/client.js';
-export * from './lib/types.js';
+export { type AllowanceInfo, type TransferAction } from './lib/types.js';
 export * from './lib/treasury.js';
 export * from './lib/venice.js';
 export * from './lib/delegation.js';
@@ -9,3 +9,5 @@ export * from './lib/price-feed.js';
 export * from './lib/trading.js';
 export * from './lib/erc8004.js';
 export * from './lib/analytics.js';
+export * from './lib/config.js';
+export * from './lib/notifications.js';

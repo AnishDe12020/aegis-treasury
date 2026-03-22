@@ -182,7 +182,7 @@ async function buildPlannedExecution(
     }
     if (!recipient) {
       throw new Error(
-        'Strategy execution requires RECIPIENT_ADDRESS in env for transfer routing.',
+        'Strategy execution requires RECIPIENT_ADDRESS in configuration for transfer routing.',
       );
     }
 
@@ -219,7 +219,7 @@ async function buildPlannedExecution(
     }
     if (!recipient) {
       throw new Error(
-        'Strategy execution requires RECIPIENT_ADDRESS in env for transfer routing.',
+        'Strategy execution requires RECIPIENT_ADDRESS in configuration for transfer routing.',
       );
     }
 
@@ -295,7 +295,7 @@ async function buildPlannedExecution(
   }
   if (!recipient) {
     throw new Error(
-      'Strategy execution requires RECIPIENT_ADDRESS in env for transfer routing.',
+      'Strategy execution requires RECIPIENT_ADDRESS in configuration for transfer routing.',
     );
   }
 
@@ -307,6 +307,17 @@ async function buildPlannedExecution(
     confidence: recommendation.confidence,
     slippageBps: 0,
   };
+}
+
+function printStartupBanner(flags: Flags) {
+  const line = '═'.repeat(72);
+  console.log(`\n\x1b[1m\x1b[36m${line}\x1b[0m`);
+  console.log(`\x1b[1m\x1b[36mAegis Agent v${AGENT_VERSION}\x1b[0m`);
+  console.log(
+    `\x1b[36mStatus:\x1b[0m ${flags.loop ? 'running (loop)' : 'single run'} | dryRun=${flags.dryRun} | strategy=${flags.strategy}`,
+  );
+  console.log(printConfig(config));
+  console.log(`\x1b[1m\x1b[36m${line}\x1b[0m\n`);
 }
 
 // ─── Single cycle ────────────────────────────────────────────────────
@@ -342,6 +353,21 @@ async function runCycle(flags: Flags) {
   log(`Agent allowance: ${formatUnits(remaining, 6)} USDC remaining`);
   log(`Allowance active: ${allowance.active}`);
 
+  const nowEpoch = BigInt(Math.floor(Date.now() / 1000));
+  if (allowance.expiry !== 0n && allowance.expiry <= nowEpoch) {
+    notifications.notify('allowance_expired', {
+      expiry: new Date(Number(allowance.expiry) * 1000).toISOString(),
+      remaining: formatUnits(remaining, 6),
+    });
+  }
+
+  if (allowance.maxAmount > 0n && remaining * 10n <= allowance.maxAmount) {
+    notifications.notify('allowance_low', {
+      remaining: formatUnits(remaining, 6),
+      maxAmount: formatUnits(allowance.maxAmount, 6),
+    });
+  }
+
   if (!allowance.active || remaining === 0n) {
     log('No active allowance. Waiting for owner to set one.');
     return;
@@ -361,7 +387,23 @@ If you recommend a transfer or rebalance, include a "suggestedAmount" field (in 
   `.trim();
 
   log('Analyzing strategy with Venice AI (private inference)...');
-  const recommendation = (await analyzeStrategy(venice, context)) as VeniceRecommendation;
+  const recommendation = (await analyzeStrategy(
+    venice,
+    context,
+    config.veniceModel,
+  )) as VeniceRecommendation;
+
+  if (
+    previousRecommendationAction !== null &&
+    previousRecommendationAction !== recommendation.action
+  ) {
+    notifications.notify('strategy_changed', {
+      previous: previousRecommendationAction,
+      next: recommendation.action,
+      confidence: recommendation.confidence,
+    });
+  }
+  previousRecommendationAction = recommendation.action;
 
   log('Strategy recommendation:');
   log(`  Action: ${recommendation.action}`);
@@ -386,7 +428,7 @@ If you recommend a transfer or rebalance, include a "suggestedAmount" field (in 
 
   if (!plan) {
     log(
-      `No execution action taken (action=${recommendation.action}, confidence=${recommendation.confidence}, strategy=${flags.strategy ?? 'none'}).`,
+      `No execution action taken (action=${recommendation.action}, confidence=${recommendation.confidence}, strategy=${flags.strategy}).`,
     );
     return;
   }
@@ -437,6 +479,12 @@ If you recommend a transfer or rebalance, include a "suggestedAmount" field (in 
 
   const riskDecision = riskManager.validateAction(riskAction, { dailyVolumeUsd });
   if (!riskDecision.approved) {
+    notifications.notify('risk_limit_hit', {
+      reason: riskDecision.reason,
+      amountUsd,
+      token: plan.token,
+      to: plan.to,
+    });
     logError(`RiskManager rejected action: ${riskDecision.reason}`);
     return;
   }
@@ -465,6 +513,13 @@ If you recommend a transfer or rebalance, include a "suggestedAmount" field (in 
       const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash });
       if (receipt.status === 'success') {
         dailyVolumeUsd += amountUsd;
+        notifications.notify('transfer_executed', {
+          txHash,
+          token: plan.token,
+          to: plan.to,
+          amount: formatUnits(amount, decimals),
+          reason: plan.reason,
+        });
         log(`Transaction confirmed in block ${receipt.blockNumber}`);
       } else {
         logError(`Transaction reverted in block ${receipt.blockNumber}`);
@@ -480,10 +535,12 @@ If you recommend a transfer or rebalance, include a "suggestedAmount" field (in 
 
 // ─── Main ────────────────────────────────────────────────────────────
 async function main() {
+  validateConfig(config);
   const flags = parseFlags();
+  printStartupBanner(flags);
 
   log(
-    `Mode: dryRun=${flags.dryRun}, loop=${flags.loop}, interval=${flags.intervalSec}s, strategy=${flags.strategy ?? 'none'}`,
+    `Mode: dryRun=${flags.dryRun}, loop=${flags.loop}, interval=${flags.intervalSec}s, strategy=${flags.strategy}`,
   );
 
   if (flags.loop) {
