@@ -29,11 +29,12 @@ export default function EmergencyControls() {
   const isOwner =
     address && owner && address.toLowerCase() === owner.toLowerCase();
 
-  // Read paused state
+  // Read paused state — may fail if contract was deployed before Pausable was added
   const { data: isPaused, refetch: refetchPaused } = useReadContract({
     address: TREASURY_ADDRESS,
     abi: TREASURY_ABI,
     functionName: "paused",
+    query: { retry: false },
   });
 
   // Pause / Unpause

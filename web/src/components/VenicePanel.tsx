@@ -119,7 +119,7 @@ export default function VenicePanel() {
   }, [treasuryBalance, agentCount]);
 
   return (
-    <div className="terminal-panel flex flex-col h-full">
+    <div className="terminal-panel flex flex-col h-full max-h-[500px] overflow-hidden">
       <div className="terminal-header flex items-center justify-between">
         <div className="flex items-center gap-2">
           <span className="text-[11px] font-semibold uppercase tracking-wider text-aegis-text-dim">

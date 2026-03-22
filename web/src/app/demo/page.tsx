@@ -56,7 +56,7 @@ function useChainData() {
   const fetchData = useCallback(async () => {
     try {
       // Parallel reads
-      const [depositsRaw, agentCountRaw, agentsRaw, ownerBalanceRaw, pausedRaw, blockNumber] = await Promise.all([
+      const [depositsRaw, agentCountRaw, agentsRaw, ownerBalanceRaw, blockNumber] = await Promise.all([
         publicClient.readContract({
           address: TREASURY_ADDRESS,
           abi: TREASURY_ABI,
@@ -79,13 +79,20 @@ function useChainData() {
           functionName: 'balanceOf',
           args: [OWNER_WALLET],
         }) as Promise<bigint>,
-        publicClient.readContract({
+        publicClient.getBlockNumber(),
+      ]);
+
+      // paused() may not exist on the deployed contract (added post-deployment)
+      let pausedRaw = false;
+      try {
+        pausedRaw = await publicClient.readContract({
           address: TREASURY_ADDRESS,
           abi: TREASURY_ABI,
           functionName: 'paused',
-        }) as Promise<boolean>,
-        publicClient.getBlockNumber(),
-      ]);
+        }) as boolean;
+      } catch {
+        // Contract doesn't have paused() — that's fine
+      }
 
       const treasuryBalance = formatUnits(depositsRaw, USDC_DECIMALS);
       const ownerUsdcBalance = formatUnits(ownerBalanceRaw, USDC_DECIMALS);
