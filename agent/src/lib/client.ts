@@ -4,11 +4,13 @@ import { privateKeyToAccount } from 'viem/accounts';
 
 export function createClients(privateKey: `0x${string}`) {
   const account = privateKeyToAccount(privateKey);
-  const publicClient = createPublicClient({
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const publicClient: any = createPublicClient({
     chain: baseSepolia,
     transport: http(),
   });
-  const walletClient = createWalletClient({
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const walletClient: any = createWalletClient({
     account,
     chain: baseSepolia,
     transport: http(),

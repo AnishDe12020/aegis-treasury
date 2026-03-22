@@ -1,5 +1,11 @@
-import { type PublicClient, type WalletClient, type Address, getContract } from 'viem';
+import { type Address } from 'viem';
 import type { AllowanceInfo } from './types.js';
+
+// Use loose types to avoid viem chain-specific type mismatches
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type PC = any;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type WC = any;
 
 export const AEGIS_TREASURY_ABI = [
   {
@@ -109,7 +115,7 @@ export const AEGIS_TREASURY_ABI = [
 // ─── Read Functions ───────────────────────────────────────────────
 
 export async function getDeposits(
-  publicClient: PublicClient,
+  publicClient: PC,
   treasuryAddress: Address,
   token: Address
 ): Promise<bigint> {
@@ -122,7 +128,7 @@ export async function getDeposits(
 }
 
 export async function getRemainingAllowance(
-  publicClient: PublicClient,
+  publicClient: PC,
   treasuryAddress: Address,
   agent: Address,
   token: Address
@@ -136,7 +142,7 @@ export async function getRemainingAllowance(
 }
 
 export async function getAgentAllowance(
-  publicClient: PublicClient,
+  publicClient: PC,
   treasuryAddress: Address,
   agent: Address,
   token: Address
@@ -152,7 +158,7 @@ export async function getAgentAllowance(
 }
 
 export async function getAgents(
-  publicClient: PublicClient,
+  publicClient: PC,
   treasuryAddress: Address
 ): Promise<readonly Address[]> {
   return publicClient.readContract({
@@ -163,7 +169,7 @@ export async function getAgents(
 }
 
 export async function getAgentCount(
-  publicClient: PublicClient,
+  publicClient: PC,
   treasuryAddress: Address
 ): Promise<bigint> {
   return publicClient.readContract({
@@ -176,7 +182,7 @@ export async function getAgentCount(
 // ─── Write Functions ──────────────────────────────────────────────
 
 export async function agentTransfer(
-  walletClient: WalletClient,
+  walletClient: WC,
   treasuryAddress: Address,
   token: Address,
   to: Address,
