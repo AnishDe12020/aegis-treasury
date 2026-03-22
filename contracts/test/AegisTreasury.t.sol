@@ -376,4 +376,64 @@ contract AegisTreasuryTest is Test {
         vm.expectRevert("Allowance expired");
         treasury.agentTransfer(address(usdc), recipient, 50e6, "Past boundary");
     }
+
+    // ─── Emergency Control Tests ───────────────────────────────────
+
+    function test_pause_blocksAgentTransfer() public {
+        treasury.deposit(address(usdc), 1000e6);
+        address[] memory targets = new address[](0);
+        treasury.setAgentAllowance(agent, address(usdc), 500e6, 0, targets);
+
+        treasury.pause();
+
+        vm.prank(agent);
+        vm.expectRevert();
+        treasury.agentTransfer(address(usdc), recipient, 50e6, "Should be paused");
+
+        // Unpause restores functionality
+        treasury.unpause();
+
+        vm.prank(agent);
+        treasury.agentTransfer(address(usdc), recipient, 50e6, "Unpaused now");
+        assertEq(usdc.balanceOf(recipient), 50e6);
+    }
+
+    function test_emergencyWithdraw() public {
+        treasury.deposit(address(usdc), 1000e6);
+        uint256 ownerBefore = usdc.balanceOf(owner);
+
+        treasury.emergencyWithdraw(address(usdc));
+
+        assertEq(usdc.balanceOf(address(treasury)), 0);
+        assertEq(usdc.balanceOf(owner) - ownerBefore, 1000e6);
+        assertEq(treasury.deposits(address(usdc)), 0);
+    }
+
+    function test_revokeAllAgents() public {
+        address[] memory targets = new address[](0);
+        treasury.setAgentAllowance(agent, address(usdc), 100e6, 0, targets);
+        treasury.setAgentAllowance(agent2, address(usdc), 200e6, 0, targets);
+
+        assertTrue(treasury.getRemainingAllowance(agent, address(usdc)) > 0);
+        assertTrue(treasury.getRemainingAllowance(agent2, address(usdc)) > 0);
+
+        treasury.revokeAllAgents(address(usdc));
+
+        assertEq(treasury.getRemainingAllowance(agent, address(usdc)), 0);
+        assertEq(treasury.getRemainingAllowance(agent2, address(usdc)), 0);
+    }
+
+    function test_pause_onlyOwner() public {
+        vm.prank(agent);
+        vm.expectRevert();
+        treasury.pause();
+    }
+
+    function test_emergencyWithdraw_onlyOwner() public {
+        treasury.deposit(address(usdc), 100e6);
+
+        vm.prank(agent);
+        vm.expectRevert();
+        treasury.emergencyWithdraw(address(usdc));
+    }
 }

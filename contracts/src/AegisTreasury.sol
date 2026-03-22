@@ -5,6 +5,7 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import {Pausable} from "@openzeppelin/contracts/utils/Pausable.sol";
 
 /// @title AegisTreasury
 /// @notice A treasury vault where humans deposit funds and create scoped spending
@@ -14,7 +15,7 @@ import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol
 /// directly. For production use with MetaMask Delegation Framework, the delegation
 /// signing and redemption happens off-chain/via the DelegationManager contract.
 /// This contract handles the deposit/withdraw/allowance layer.
-contract AegisTreasury is Ownable, ReentrancyGuard {
+contract AegisTreasury is Ownable, ReentrancyGuard, Pausable {
     using SafeERC20 for IERC20;
 
     struct AgentAllowance {
@@ -56,6 +57,38 @@ contract AegisTreasury is Ownable, ReentrancyGuard {
     );
 
     constructor() Ownable(msg.sender) {}
+
+    // ─── Emergency Controls ────────────────────────────────────────────
+
+    /// @notice Pause all agent operations (owner only)
+    function pause() external onlyOwner {
+        _pause();
+    }
+
+    /// @notice Unpause agent operations (owner only)
+    function unpause() external onlyOwner {
+        _unpause();
+    }
+
+    /// @notice Emergency withdraw all tokens of a given type (owner only, bypasses allowances)
+    function emergencyWithdraw(address token) external onlyOwner nonReentrant {
+        uint256 balance = IERC20(token).balanceOf(address(this));
+        if (balance > 0) {
+            deposits[token] = 0;
+            IERC20(token).safeTransfer(msg.sender, balance);
+            emit Withdrawn(token, balance);
+        }
+    }
+
+    /// @notice Revoke all agent allowances for a specific token (owner only)
+    function revokeAllAgents(address token) external onlyOwner {
+        for (uint256 i = 0; i < agents.length; i++) {
+            if (allowances[agents[i]][token].active) {
+                allowances[agents[i]][token].active = false;
+                emit AgentAllowanceRevoked(agents[i], token);
+            }
+        }
+    }
 
     // ─── Owner Functions ───────────────────────────────────────────────
 
@@ -124,7 +157,7 @@ contract AegisTreasury is Ownable, ReentrancyGuard {
         address to,
         uint256 amount,
         string calldata reason
-    ) external nonReentrant {
+    ) external nonReentrant whenNotPaused {
         AgentAllowance storage allowance = allowances[msg.sender][token];
 
         require(allowance.active, "Allowance not active");
@@ -210,7 +243,7 @@ contract AegisTreasury is Ownable, ReentrancyGuard {
         uint256 amount,
         bytes calldata data,
         string calldata reason
-    ) external nonReentrant {
+    ) external nonReentrant whenNotPaused {
         AgentAllowance storage allowance = allowances[msg.sender][token];
 
         require(allowance.active, "Allowance not active");
