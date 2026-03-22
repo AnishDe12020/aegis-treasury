@@ -157,7 +157,7 @@ contract AegisTreasury is Ownable, ReentrancyGuard, Pausable {
         address to,
         uint256 amount,
         string calldata reason
-    ) external nonReentrant whenNotPaused {
+    ) external virtual nonReentrant whenNotPaused {
         AgentAllowance storage allowance = allowances[msg.sender][token];
 
         require(allowance.active, "Allowance not active");
@@ -243,7 +243,7 @@ contract AegisTreasury is Ownable, ReentrancyGuard, Pausable {
         uint256 amount,
         bytes calldata data,
         string calldata reason
-    ) external nonReentrant whenNotPaused {
+    ) external virtual nonReentrant whenNotPaused {
         AgentAllowance storage allowance = allowances[msg.sender][token];
 
         require(allowance.active, "Allowance not active");

@@ -5,6 +5,7 @@ import Treasury from "@/components/Treasury";
 import CreateAllowance from "@/components/CreateAllowance";
 import AllowanceList from "@/components/AllowanceList";
 import AgentActivity from "@/components/AgentActivity";
+import EmergencyControls from "@/components/EmergencyControls";
 import { useAccount, useReadContract } from "wagmi";
 import {
   TREASURY_ADDRESS,
@@ -269,6 +270,11 @@ export default function Home() {
               <AllowanceList />
               <AgentActivity />
             </div>
+          </div>
+
+          {/* Emergency Controls */}
+          <div className="mt-6">
+            <EmergencyControls />
           </div>
         </main>
       )}

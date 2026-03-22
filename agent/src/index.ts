@@ -8,3 +8,4 @@ export * from './lib/batch.js';
 export * from './lib/price-feed.js';
 export * from './lib/trading.js';
 export * from './lib/erc8004.js';
+export * from './lib/analytics.js';

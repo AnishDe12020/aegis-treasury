@@ -138,6 +138,46 @@ export const TREASURY_ABI = [
     outputs: [{ name: "", type: "bool", internalType: "bool" }],
     stateMutability: "view",
   },
+  // ── Emergency functions ──
+  {
+    type: "function",
+    name: "pause",
+    inputs: [],
+    outputs: [],
+    stateMutability: "nonpayable",
+  },
+  {
+    type: "function",
+    name: "unpause",
+    inputs: [],
+    outputs: [],
+    stateMutability: "nonpayable",
+  },
+  {
+    type: "function",
+    name: "emergencyWithdraw",
+    inputs: [
+      { name: "token", type: "address", internalType: "address" },
+    ],
+    outputs: [],
+    stateMutability: "nonpayable",
+  },
+  {
+    type: "function",
+    name: "revokeAllAgents",
+    inputs: [
+      { name: "token", type: "address", internalType: "address" },
+    ],
+    outputs: [],
+    stateMutability: "nonpayable",
+  },
+  {
+    type: "function",
+    name: "paused",
+    inputs: [],
+    outputs: [{ name: "", type: "bool", internalType: "bool" }],
+    stateMutability: "view",
+  },
   // ── Events ──
   {
     type: "event",
@@ -190,6 +230,35 @@ export const TREASURY_ABI = [
       { name: "data", type: "bytes", indexed: false, internalType: "bytes" },
       { name: "reason", type: "string", indexed: false, internalType: "string" },
     ],
+  },
+] as const;
+
+export const FACTORY_ADDRESS =
+  "0x43EF4a074C9A00437B536533d6b6a95D7Bc0D9Fe" as `0x${string}`;
+
+export const FACTORY_ABI = [
+  {
+    type: "function",
+    name: "createTreasury",
+    inputs: [],
+    outputs: [{ name: "", type: "address", internalType: "address" }],
+    stateMutability: "nonpayable",
+  },
+  {
+    type: "function",
+    name: "getTreasury",
+    inputs: [
+      { name: "owner", type: "address", internalType: "address" },
+    ],
+    outputs: [{ name: "", type: "address", internalType: "address" }],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "getAllTreasuries",
+    inputs: [],
+    outputs: [{ name: "", type: "address[]", internalType: "address[]" }],
+    stateMutability: "view",
   },
 ] as const;
 
