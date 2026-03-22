@@ -180,15 +180,13 @@ function DashboardView() {
           <OrderBook />
         </div>
 
-        {/* Row 3: Terminal Feed + Strategy Panel + Emergency */}
-        <div className="min-h-[340px]">
-          <TerminalFeed />
+        {/* Row 4: Terminal Feed + Strategy Panel + Emergency */}
+        <div className="h-[400px]">
+          <TerminalFeed maxHeight="380px" />
         </div>
-        <div className="space-y-2 overflow-hidden">
+        <div className="h-[400px] overflow-y-auto space-y-2">
           <StrategyPanel />
-          <div className="max-h-[320px] overflow-auto">
-            <VenicePanel />
-          </div>
+          <VenicePanel />
           <EmergencyControls />
         </div>
       </div>

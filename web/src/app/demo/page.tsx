@@ -674,7 +674,7 @@ function MockVenicePanel() {
             Private
           </span>
         </div>
-        <span className="text-[10px] text-aegis-muted font-mono">llama-3.3-70b</span>
+        <span className="text-[10px] text-aegis-muted font-mono">gemini-3-flash (private)</span>
       </div>
 
       <div className="flex-1 overflow-auto p-3 space-y-3 text-[11px]">
@@ -1026,10 +1026,10 @@ export default function DemoPage() {
               </div>
 
               {/* Row 4: Terminal Feed + Strategy/Venice/Emergency */}
-              <div className="min-h-[340px]">
+              <div className="h-[400px]">
                 <LiveTerminalFeed data={data} loading={loading} />
               </div>
-              <div className="space-y-2">
+              <div className="h-[400px] overflow-y-auto space-y-2">
                 <MockStrategyPanel data={data} loading={loading} />
                 <MockVenicePanel />
                 <MockEmergencyControls data={data} />
