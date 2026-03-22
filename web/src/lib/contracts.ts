@@ -233,6 +233,19 @@ export const TREASURY_ABI = [
   },
 ] as const;
 
+export const MOCK_USDC_ABI = [
+  {
+    type: "function",
+    name: "mint",
+    inputs: [
+      { name: "to", type: "address", internalType: "address" },
+      { name: "amount", type: "uint256", internalType: "uint256" },
+    ],
+    outputs: [],
+    stateMutability: "nonpayable",
+  },
+] as const;
+
 export const FACTORY_ADDRESS =
   "0x43EF4a074C9A00437B536533d6b6a95D7Bc0D9Fe" as `0x${string}`;
 

@@ -14,7 +14,43 @@ import {
   USDC_DECIMALS,
   TREASURY_ABI,
   ERC20_ABI,
+  MOCK_USDC_ABI,
 } from "@/lib/contracts";
+
+function MintButton({ address, refetchBalance }: { address: `0x${string}`; refetchBalance: () => void }) {
+  const { writeContract: mint, data: mintTxHash, isPending: isMinting } = useWriteContract();
+  const { isLoading: isMintConfirming, isSuccess: isMintConfirmed } = useWaitForTransactionReceipt({ hash: mintTxHash });
+
+  useEffect(() => {
+    if (isMintConfirmed) {
+      setTimeout(refetchBalance, 2000);
+    }
+  }, [isMintConfirmed, refetchBalance]);
+
+  const handleMint = () => {
+    mint({
+      address: USDC_ADDRESS,
+      abi: MOCK_USDC_ABI,
+      functionName: "mint",
+      args: [address, parseUnits("1000", USDC_DECIMALS)],
+    });
+  };
+
+  return (
+    <button
+      onClick={handleMint}
+      disabled={isMinting || isMintConfirming}
+      className="w-full rounded-xl py-2.5 text-sm font-medium transition-all duration-200"
+      style={{
+        background: "linear-gradient(135deg, rgba(52,211,153,0.12) 0%, rgba(59,130,246,0.12) 100%)",
+        border: "1px solid rgba(52,211,153,0.2)",
+        color: isMintConfirmed ? "#22c55e" : "#5eead4",
+      }}
+    >
+      {isMinting ? "Minting..." : isMintConfirming ? "Confirming..." : isMintConfirmed ? "✓ 1,000 USDC Minted!" : "🪙 Mint 1,000 Test USDC"}
+    </button>
+  );
+}
 
 export default function Treasury() {
   const { address, isConnected } = useAccount();
@@ -288,8 +324,13 @@ export default function Treasury() {
         </div>
       )}
 
+      {/* Mint Test USDC */}
+      {isConnected && (
+        <MintButton address={address!} refetchBalance={() => { refetchBalance(); }} />
+      )}
+
       {/* Deposit / Withdraw tabs */}
-      {isConnected && isOwner && (
+      {isConnected && (
         <div className="space-y-4">
           {/* Tab switcher */}
           <div
