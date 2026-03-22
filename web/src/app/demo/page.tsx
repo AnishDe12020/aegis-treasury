@@ -682,11 +682,12 @@ function MockVenicePanel() {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span className="text-aegis-muted uppercase tracking-wider text-[10px] font-medium">Action</span>
-            <span className="rounded px-2 py-0.5 text-[11px] font-bold uppercase text-green-400 bg-[rgba(34,197,94,0.12)]">buy</span>
+            <span className="rounded px-2 py-0.5 text-[11px] font-bold uppercase text-green-400 bg-[rgba(34,197,94,0.12)]">BUY</span>
+            <span className="font-mono text-white text-[10px] font-semibold">ETH/USDC</span>
           </div>
           <div className="flex items-center gap-2">
             <span className="text-aegis-muted text-[10px]">Confidence</span>
-            <span className="font-mono font-bold text-white">72%</span>
+            <span className="font-mono font-bold text-emerald-400">78%</span>
           </div>
         </div>
 
@@ -694,34 +695,44 @@ function MockVenicePanel() {
         <div>
           <div className="flex items-center justify-between mb-1.5">
             <span className="text-aegis-muted uppercase tracking-wider text-[10px] font-medium">Risk Assessment</span>
-            <span className="font-mono font-bold text-blue-400">4/10</span>
+            <span className="font-mono font-bold text-blue-400">3/10</span>
           </div>
           <div className="w-full h-1.5 rounded-full bg-[rgba(255,255,255,0.06)] overflow-hidden">
-            <div className="h-full rounded-full bg-blue-400 transition-all duration-500" style={{ width: '40%' }} />
+            <div className="h-full rounded-full bg-blue-400 transition-all duration-500" style={{ width: '30%' }} />
           </div>
+        </div>
+
+        {/* Token Pair Analysis */}
+        <div className="rounded-lg border border-[rgba(59,130,246,0.15)] bg-[rgba(59,130,246,0.04)] p-2.5 space-y-1.5">
+          <span className="text-blue-400 uppercase tracking-wider text-[10px] font-medium">Token Pair Analysis</span>
+          <div className="flex justify-between"><span className="text-aegis-muted">Entry Price</span><span className="font-mono text-white font-semibold">$3,456.78</span></div>
+          <div className="flex justify-between"><span className="text-aegis-muted">Target (TP)</span><span className="font-mono text-emerald-400">$3,580.00 (+3.6%)</span></div>
+          <div className="flex justify-between"><span className="text-aegis-muted">Stop Loss</span><span className="font-mono text-red-400">$3,380.00 (-2.2%)</span></div>
+          <div className="flex justify-between"><span className="text-aegis-muted">Risk:Reward</span><span className="font-mono text-aegis-text-dim">1:1.6</span></div>
         </div>
 
         {/* Recommendation */}
         <div className="rounded-lg border border-[rgba(255,255,255,0.06)] bg-[rgba(255,255,255,0.02)] p-2.5 space-y-1.5">
           <span className="text-aegis-muted uppercase tracking-wider text-[10px] font-medium">Recommendation</span>
           <div className="flex justify-between"><span className="text-aegis-muted">Pair</span><span className="font-mono text-white font-semibold">ETH/USDC</span></div>
-          <div className="flex justify-between"><span className="text-aegis-muted">Direction</span><span className="font-mono text-aegis-text-dim">Long</span></div>
-          <div className="flex justify-between"><span className="text-aegis-muted">Position Size</span><span className="font-mono text-aegis-text-dim">50 USDC (5% of treasury)</span></div>
+          <div className="flex justify-between"><span className="text-aegis-muted">Direction</span><span className="font-mono text-emerald-400">Long</span></div>
+          <div className="flex justify-between"><span className="text-aegis-muted">Position Size</span><span className="font-mono text-aegis-text-dim">50 USDC (0.2% of treasury)</span></div>
           <div className="flex justify-between"><span className="text-aegis-muted">Time Horizon</span><span className="font-mono text-aegis-text-dim">4-8 hours</span></div>
+          <div className="flex justify-between"><span className="text-aegis-muted">Price Impact</span><span className="font-mono text-aegis-text-dim">12 bps (via QuoterV2)</span></div>
         </div>
 
         {/* Reasoning */}
         <div>
           <span className="text-aegis-muted uppercase tracking-wider text-[10px] font-medium">Reasoning</span>
           <p className="mt-1 text-aegis-text-dim leading-relaxed">
-            ETH showing bullish momentum with increasing volume on Base. Treasury utilization at 21% leaves ample room for position sizing. DCA strategy alignment suggests accumulation phase is favorable. Risk-adjusted entry with 0.5% slippage tolerance recommended.
+            WETH/USDC showing bullish EMA crossover on 1h candles (EMA-12 above EMA-26). On-chain volume up 18% over 24h on Uniswap V3 Base pools. QuoterV2 quotes show tightening spreads (12 bps at 500 USDC). Treasury utilization at 34% with 3,300 USDC remaining capacity. DCA chunk 12/20 aligns with accumulation zone. Risk manager validated: position within daily limit (175/500 USDC used).
           </p>
         </div>
 
         <div className="h-px bg-[rgba(255,255,255,0.06)]" />
 
         <div className="flex items-center justify-between">
-          <span className="text-aegis-muted text-[10px]">Last updated: 2m ago</span>
+          <span className="text-aegis-muted text-[10px]">Last updated: 45s ago</span>
           <button className="rounded-md px-3 py-1.5 text-[10px] font-semibold bg-[rgba(139,92,246,0.15)] text-purple-400 hover:bg-[rgba(139,92,246,0.25)] active:scale-95 transition-all">
             Run Analysis
           </button>

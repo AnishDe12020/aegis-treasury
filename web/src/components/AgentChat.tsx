@@ -24,17 +24,56 @@ const PREBUILT_COMMANDS = [
   { label: 'risk assessment', command: 'Evaluate the current risk profile of the treasury. Consider concentration risk, liquidity risk, and market risk.' },
 ];
 
+const DEMO_MESSAGES: ChatMessage[] = [
+  {
+    id: 'demo-system',
+    role: 'system',
+    content: 'Aegis Agent connected. Treasury: 25,057 USDC | Agents: 2 | Network: Base Sepolia',
+    timestamp: new Date().toISOString(),
+  },
+  {
+    id: 'demo-user-1',
+    role: 'user',
+    content: 'analyze portfolio',
+    timestamp: new Date().toISOString(),
+  },
+  {
+    id: 'demo-agent-1',
+    role: 'agent',
+    content: 'Treasury Analysis:\n- Total deposits: 25,057.30 USDC\n- Agent allocation: 5,000 USDC (20% of treasury)\n- Utilization: 1,700/5,000 USDC (34% spent)\n- Remaining capacity: 3,300 USDC\n\nRisk assessment: LOW (3/10). Treasury is well-capitalized with conservative agent exposure. Current utilization rate is healthy.',
+    timestamp: new Date().toISOString(),
+  },
+  {
+    id: 'demo-user-2',
+    role: 'user',
+    content: 'check momentum WETH',
+    timestamp: new Date().toISOString(),
+  },
+  {
+    id: 'demo-agent-2',
+    role: 'agent',
+    content: 'WETH Momentum Analysis (Base Sepolia):\n- Trend: SIDEWAYS \u2192 slight bullish\n- Confidence: 0.67\n- Price impact at 500 USDC: 12 bps\n- Liquidity: Adequate for positions under 2,000 USDC\n\nRecommendation: HOLD. Confidence below 0.7 threshold \u2014 waiting for stronger directional signal.',
+    timestamp: new Date().toISOString(),
+  },
+  {
+    id: 'demo-user-3',
+    role: 'user',
+    content: 'what strategies are available?',
+    timestamp: new Date().toISOString(),
+  },
+  {
+    id: 'demo-agent-3',
+    role: 'agent',
+    content: 'Available Strategies:\n1. DCA \u2014 Dollar-cost averaging (4 chunks, 60s interval)\n2. Momentum \u2014 Trend-following via QuoterV2 price curves\n3. Rebalance \u2014 Target allocation maintenance\n4. Risk Manager \u2014 Trade validation gate\n\nCurrently active: DCA (chunk 3/4 pending). All strategies operate within your scoped allowance bounds.',
+    timestamp: new Date().toISOString(),
+  },
+];
+
 export default function AgentChat() {
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    {
-      id: 'system-init',
-      role: 'system',
-      content: 'Aegis Agent connected. Venice AI private inference active. Type a command or click a suggestion below.',
-      timestamp: new Date().toISOString(),
-    },
-  ]);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
+  const [demoLoaded, setDemoLoaded] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   // Read treasury data
@@ -50,6 +89,18 @@ export default function AgentChat() {
     abi: TREASURY_ABI,
     functionName: 'getAgentCount',
   });
+
+  // Load demo messages with staggered delays
+  useEffect(() => {
+    if (demoLoaded) return;
+    setDemoLoaded(true);
+
+    DEMO_MESSAGES.forEach((msg, i) => {
+      setTimeout(() => {
+        setMessages(prev => [...prev, msg]);
+      }, (i + 1) * 100);
+    });
+  }, [demoLoaded]);
 
   // Auto-scroll to bottom
   useEffect(() => {
