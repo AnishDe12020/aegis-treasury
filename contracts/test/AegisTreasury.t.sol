@@ -278,4 +278,102 @@ contract AegisTreasuryTest is Test {
         vm.expectRevert("Exceeds allowance");
         treasury.agentExecute(address(usdc), recipient, 200e6, "", "Too much");
     }
+
+    // ─── Cumulative Spending Tests ─────────────────────────────────
+
+    function test_cumulativeSpending() public {
+        treasury.deposit(address(usdc), 1000e6);
+        address[] memory targets = new address[](0);
+        treasury.setAgentAllowance(agent, address(usdc), 100e6, 0, targets);
+
+        // First transfer: 40 USDC
+        vm.prank(agent);
+        treasury.agentTransfer(address(usdc), recipient, 40e6, "Transfer 1");
+        assertEq(treasury.getRemainingAllowance(agent, address(usdc)), 60e6);
+
+        // Second transfer: 40 USDC
+        vm.prank(agent);
+        treasury.agentTransfer(address(usdc), recipient, 40e6, "Transfer 2");
+        assertEq(treasury.getRemainingAllowance(agent, address(usdc)), 20e6);
+
+        // Third transfer: 30 USDC (exceeds remaining 20)
+        vm.prank(agent);
+        vm.expectRevert("Exceeds allowance");
+        treasury.agentTransfer(address(usdc), recipient, 30e6, "Transfer 3");
+
+        // Exact remaining works
+        vm.prank(agent);
+        treasury.agentTransfer(address(usdc), recipient, 20e6, "Transfer 3 exact");
+        assertEq(treasury.getRemainingAllowance(agent, address(usdc)), 0);
+    }
+
+    function test_multipleTargets() public {
+        treasury.deposit(address(usdc), 1000e6);
+        address[] memory targets = new address[](2);
+        targets[0] = recipient;
+        targets[1] = recipient2;
+        treasury.setAgentAllowance(agent, address(usdc), 500e6, 0, targets);
+
+        // Both targets work
+        vm.prank(agent);
+        treasury.agentTransfer(address(usdc), recipient, 50e6, "To recipient 1");
+
+        vm.prank(agent);
+        treasury.agentTransfer(address(usdc), recipient2, 50e6, "To recipient 2");
+
+        assertEq(usdc.balanceOf(recipient), 50e6);
+        assertEq(usdc.balanceOf(recipient2), 50e6);
+        assertEq(treasury.getRemainingAllowance(agent, address(usdc)), 400e6);
+    }
+
+    function test_resetAllowance() public {
+        treasury.deposit(address(usdc), 1000e6);
+        address[] memory targets = new address[](0);
+        treasury.setAgentAllowance(agent, address(usdc), 100e6, 0, targets);
+
+        // Spend some
+        vm.prank(agent);
+        treasury.agentTransfer(address(usdc), recipient, 60e6, "Spend");
+        assertEq(treasury.getRemainingAllowance(agent, address(usdc)), 40e6);
+
+        // Owner resets allowance with a new, higher one
+        treasury.setAgentAllowance(agent, address(usdc), 200e6, 0, targets);
+        assertEq(treasury.getRemainingAllowance(agent, address(usdc)), 200e6);
+    }
+
+    function test_withdrawReducesTreasuryBalance() public {
+        treasury.deposit(address(usdc), 1000e6);
+        address[] memory targets = new address[](0);
+        treasury.setAgentAllowance(agent, address(usdc), 800e6, 0, targets);
+
+        // Owner withdraws some
+        treasury.withdraw(address(usdc), 500e6);
+
+        // Agent tries to use full allowance but treasury only has 500
+        vm.prank(agent);
+        vm.expectRevert("Insufficient treasury balance");
+        treasury.agentTransfer(address(usdc), recipient, 600e6, "Too much for treasury");
+
+        // But can use up to treasury balance
+        vm.prank(agent);
+        treasury.agentTransfer(address(usdc), recipient, 400e6, "Within treasury balance");
+    }
+
+    function test_expiryBoundary() public {
+        treasury.deposit(address(usdc), 1000e6);
+        address[] memory targets = new address[](0);
+        uint256 expiry = block.timestamp + 100;
+        treasury.setAgentAllowance(agent, address(usdc), 500e6, expiry, targets);
+
+        // At exact expiry timestamp — should still work
+        vm.warp(expiry);
+        vm.prank(agent);
+        treasury.agentTransfer(address(usdc), recipient, 50e6, "At boundary");
+
+        // One second after — should fail
+        vm.warp(expiry + 1);
+        vm.prank(agent);
+        vm.expectRevert("Allowance expired");
+        treasury.agentTransfer(address(usdc), recipient, 50e6, "Past boundary");
+    }
 }
