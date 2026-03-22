@@ -1,0 +1,53 @@
+This is Aegis — a treasury system that lets humans safely delegate spending authority to AI agents on Base.
+
+<break time="800ms"/>
+
+Today, if your AI agent needs to spend money, you either give it your private key — full risk — or you co-sign every transaction, killing autonomy.
+
+<break time="400ms"/>
+
+Aegis creates a middle ground: scoped, revocable permissions.
+
+<break time="800ms"/>
+
+The human deposits USDC into the Aegis treasury vault and creates scoped allowances. Each allowance has a spending cap, allowed targets, and an expiry. The agent can spend freely within those bounds — here, 500 USDC max with 488 remaining.
+
+<break time="800ms"/>
+
+The agent uses Venice AI for private strategy analysis — reasoning that's never stored or visible to third parties.
+
+<break time="400ms"/>
+
+Here it's running Gemini 3 Flash through Venice's privacy-preserving infrastructure. The model analyzes the treasury state and recommends holding at 90% confidence — conservative risk management, built in.
+
+<break time="800ms"/>
+
+Watch the agent execute a real transfer on Base Sepolia.
+
+<break time="300ms"/>
+
+Half a USDC, scoped within allowance bounds. The reason is logged on-chain for full auditability. Every transaction has a BaseScan link. Nothing is hidden.
+
+<break time="800ms"/>
+
+The web dashboard is a full trading terminal — token screener, price charts, order book, portfolio tracker, and an agent chat powered by Venice AI.
+
+<break time="400ms"/>
+
+Under the hood, Aegis supports multi-agent orchestration. An orchestrator analyzes state, then delegates scoped permissions to specialist agents — a swap agent locked to the Uniswap router, a transfer agent locked to a single recipient.
+
+<break time="800ms"/>
+
+50 Foundry tests. 5 smart contracts. 18 TypeScript modules.
+
+<break time="400ms"/>
+
+MetaMask Delegation Framework with EIP-712 signed caveats. Uniswap V3 integration. Multi-agent orchestration.
+
+<break time="400ms"/>
+
+Built by Anish De and Opus — Claude Opus 4.6 — with OpenAI Codex.
+
+<break time="1000ms"/>
+
+Aegis. Your Treasury. Your Rules. Your Agent.

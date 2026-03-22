@@ -1,0 +1,162 @@
+
+[1m[36m
+     ___    ________  _________
+    /   |  / ____/ / / /  _/ __/
+   / /| | / __/ / / __/ // /__ 
+  / ___ |/ /___/ /_/ // /___/ / 
+ /_/  |_/_____/\____/___/____/  
+[0m
+  [1m[37mAgent Treasury with Scoped Delegations on Base[0m
+  [2mPowered by MetaMask Delegation Framework + Venice AI[0m
+
+
+[1m[36m┌────────────────────────────────────────────────────────────┐[0m
+[1m[36m│[0m [1m[37mSCENE 1: Deployed Contracts                                [1m[36m│[0m
+[1m[36m└────────────────────────────────────────────────────────────┘[0m
+  [2mAegisTreasury:[0m [37m0x33E42b7db9569fb4f3cd6d68180fcC007AE6ece7[0m
+  [34m▶[0m https://sepolia.basescan.org/address/0x33E42b7db9569fb4f3cd6d68180fcC007AE6ece7
+
+  [2mMockUSDC      :[0m [37m0x62932909ab43336B6710444DA8232333157a6f7c[0m
+  [34m▶[0m https://sepolia.basescan.org/address/0x62932909ab43336B6710444DA8232333157a6f7c
+
+  [2mSwapRouter    :[0m [37m0x94cC0AaC535CCDB3C01d6787D6413C739ae12bc4[0m
+  [2mWETH          :[0m [37m0x4200000000000000000000000000000000000006[0m
+  [32m✔[0m [32mContracts deployed on Base Sepolia (chain 84532)[0m
+
+[1m[36m┌────────────────────────────────────────────────────────────┐[0m
+[1m[36m│[0m [1m[37mSCENE 2: Treasury State                                    [1m[36m│[0m
+[1m[36m└────────────────────────────────────────────────────────────┘[0m
+  [34m▶[0m Connecting to Base Sepolia via RPC...
+  [32m✔[0m [32mConnected to chain 84532[0m
+  [2mAgent address :[0m [37m0x8a492261655c48997D79d1d479a7c6E5A32deeD9[0m
+  [34m▶[0m Querying treasury deposits...
+  [32m✔[0m [32mTreasury USDC balance: 988.3 USDC[0m
+  [34m▶[0m Fetching registered agents...
+  [32m✔[0m [32mRegistered agents: 2[0m
+  [2m  Agent:[0m [37m0xa251e11f1702f9bcAfA7c3a580cc29898b76C854[0m
+  [2m  Agent:[0m [37m0x8a492261655c48997D79d1d479a7c6E5A32deeD9[0m
+  [34m▶[0m Building batch allowance report...
+
+  [2m=== Agent Allowance Report ===[0m
+  [2mAgent: 0xa251e11f1702f9bcAfA7c3a580cc29898b76C854[0m
+  [2m  Active: yes[0m
+  [2m  Remaining: 500[0m
+  [2m  Max: 500[0m
+  [2m  Spent: 0[0m
+  [2m  Expiry: none[0m
+  [2m  Allowed targets: any[0m
+  [2m[0m
+  [2mAgent: 0x8a492261655c48997D79d1d479a7c6E5A32deeD9[0m
+  [2m  Active: yes[0m
+  [2m  Remaining: 488.3[0m
+  [2m  Max: 500[0m
+  [2m  Spent: 11.7[0m
+  [2m  Expiry: none[0m
+  [2m  Allowed targets: any[0m
+
+[1m[36m┌────────────────────────────────────────────────────────────┐[0m
+[1m[36m│[0m [1m[37mSCENE 3: AI Strategy Analysis (Venice)                     [1m[36m│[0m
+[1m[36m└────────────────────────────────────────────────────────────┘[0m
+  [34m▶[0m Calling Venice AI with detailed market context...
+  [34m▶[0m Model: llama-3.3-70b (private inference)
+  [32m✔[0m [32mVenice AI recommendation received:[0m
+[2m  ─  ─  ─  ─  ─  ─  ─  ─  ─  ─  ─  ─  ─  ─  ─  ─  ─  ─  ─  ─  ─  ─  ─  ─  ─  ─  ─  ─  ─  ─[0m
+  [2m  Action    :[0m [37mhold[0m
+  [2m  Confidence:[0m [37m90.0%[0m
+  [2mReasoning:[0m
+    [37mThe treasury has a sufficient USDC balance of 988.3 USDC and the agent[0m
+    [37m's remaining allowance is 488.3 USDC, which is close to the maximum al[0m
+    [37mlowance of 500 USDC. The allowance spent is relatively low at 11.7 USD[0m
+    [37mC. Given the conservative approach to risk management, it's prudent to[0m
+    [37m hold and monitor the treasury state before making any transfers or re[0m
+    [37mbalancing, especially since the agent has an active allowance with no [0m
+    [37mexpiry and can respond to needs as they arise.[0m
+[2m  ─  ─  ─  ─  ─  ─  ─  ─  ─  ─  ─  ─  ─  ─  ─  ─  ─  ─  ─  ─  ─  ─  ─  ─  ─  ─  ─  ─  ─  ─[0m
+  [34m▶[0m What the agent would do:
+  [34m▶[0m   -> Hold position, no action needed at this time
+
+[1m[36m┌────────────────────────────────────────────────────────────┐[0m
+[1m[36m│[0m [1m[37mSCENE 4: Scoped Execution                                  [1m[36m│[0m
+[1m[36m└────────────────────────────────────────────────────────────┘[0m
+  [34m▶[0m Agent allowance bounds:
+  [2m  Max amount    :[0m [37m500 USDC[0m
+  [2m  Spent         :[0m [37m11.7 USDC[0m
+  [2m  Remaining     :[0m [37m488.3 USDC[0m
+  [2m  Active        :[0m [37myes[0m
+  [2m  Expiry        :[0m [37mNone[0m
+  [2m  Allowed targets:[0m [37mAny[0m
+  [34m▶[0m Executing agentTransfer of 0.5 USDC to 0x000000000000000000000000000000000000dEaD...
+  [32m✔[0m [32mTransaction submitted: 0x07c930b2970f785e33e32157fb20f5649c11d8c05ef39f9b7fffe3e77c76eaab[0m
+  [34m▶[0m https://sepolia.basescan.org/tx/0x07c930b2970f785e33e32157fb20f5649c11d8c05ef39f9b7fffe3e77c76eaab
+  [32m✔[0m [32mConfirmed in block 39214696[0m
+  [34m▶[0m Updated allowance after transfer:
+  [2m  Spent    :[0m [37m11.7 USDC[0m
+  [2m  Remaining:[0m [37m488.3 USDC[0m
+
+[1m[36m┌────────────────────────────────────────────────────────────┐[0m
+[1m[36m│[0m [1m[37mSCENE 5: Multi-Agent Architecture                          [1m[36m│[0m
+[1m[36m└────────────────────────────────────────────────────────────┘[0m
+  [34m▶[0m Aegis supports orchestrator -> specialist delegation patterns:
+
+  [1m[36mOrchestratorAgent[0m
+  [2m│  Analyzes treasury state via Venice AI[0m
+  [2m│  Validates risk limits (single trade, daily volume, slippage)[0m
+  [2m│  Creates scoped sub-delegations for specialists[0m
+  [2m├───────────────────────────────────────┐[0m
+  [2m│[0m                                       [2m│[0m
+  [1m[32mSwapAgent[0m                               [1m[33mTransferAgent[0m
+  [2mScoped to: Uniswap Router only[0m          [2mScoped to: recipient only[0m
+  [2m  Target   :[0m [37m0x94cC0AaC535CCDB3C01d6787D6413C739ae12bc4[0m
+  [2mStrategy: Momentum analysis[0m             [2mStrategy: DCA chunking[0m
+  [2mChecks trend + confidence before[0m       [2mSplits large transfers into[0m
+  [2mexecuting any swap[0m                      [2msmaller timed chunks[0m
+
+  [34m▶[0m Each specialist receives a scoped MetaMask delegation:
+  [34m▶[0m   - Limited to specific contract targets
+  [34m▶[0m   - Capped token transfer amount
+  [34m▶[0m   - Time-bounded (1 hour expiry for sub-delegations)
+  [34m▶[0m   - Risk-validated before execution
+
+[1m[36m┌────────────────────────────────────────────────────────────┐[0m
+[1m[36m│[0m [1m[37mSCENE 6: MetaMask Delegation Framework                     [1m[36m│[0m
+[1m[36m└────────────────────────────────────────────────────────────┘[0m
+  [34m▶[0m Creating a delegation with CaveatBuilder...
+
+  [1m[37mDelegation Structure:[0m
+  [2m┌────────────────────────────────────────────────┐[0m
+  [2m│[0m [1mfrom:[0m  Treasury Owner (Smart Account)      [2m│[0m
+  [2m│[0m [1mto:[0m    AI Agent (EOA)                      [2m│[0m
+  [2m│[0m [1mscope:[0m erc20TransferAmount (USDC, 500 max) [2m│[0m
+  [2m├────────────────────────────────────────────────┤[0m
+  [2m│[0m [1mCaveats:[0m                                    [2m│[0m
+  [2m│[0m   1. allowedTargets: [recipient]           [2m│[0m
+  [2m│[0m   2. timestamp: expires 2026-03-23       [2m│[0m
+  [2m│[0m   3. erc20TransferAmount: max 500 USDC     [2m│[0m
+  [2m└────────────────────────────────────────────────┘[0m
+
+  [34m▶[0m EIP-712 Signing Flow:
+  [34m▶[0m   1. CaveatBuilder assembles enforcer constraints
+  [34m▶[0m   2. createDelegation() produces an unsigned delegation
+  [34m▶[0m   3. signDelegation() signs via EIP-712 typed data
+  [34m▶[0m   4. Agent presents signed delegation to DelegationManager
+  [34m▶[0m   5. On-chain verification of signature + all caveat enforcers
+  [34m▶[0m   6. If valid, execution proceeds through the smart account
+
+  [32m✔[0m [32mDelegations replace raw allowances with composable, time-bounded permissions[0m
+
+[1m[36m┌────────────────────────────────────────────────────────────┐[0m
+[1m[36m│[0m [1m[37mSCENE 7: Summary                                           [1m[36m│[0m
+[1m[36m└────────────────────────────────────────────────────────────┘[0m
+
+  [2mOn-chain transactions:[0m [37m1[0m
+  [34m▶[0m Transaction links:
+    [32mhttps://sepolia.basescan.org/tx/0x07c930b2970f785e33e32157fb20f5649c11d8c05ef39f9b7fffe3e77c76eaab[0m
+
+  [34m▶[0m Contract links:
+    [34mTreasury: https://sepolia.basescan.org/address/0x33E42b7db9569fb4f3cd6d68180fcC007AE6ece7[0m
+    [34mAgent:    https://sepolia.basescan.org/address/0x8a492261655c48997D79d1d479a7c6E5A32deeD9[0m
+
+[2m  ─  ─  ─  ─  ─  ─  ─  ─  ─  ─  ─  ─  ─  ─  ─  ─  ─  ─  ─  ─  ─  ─  ─  ─  ─  ─  ─  ─  ─  ─[0m
+
+  [1m[35mBuilt at The Synthesis by Anish De and Opus[0m
+
