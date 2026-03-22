@@ -101,20 +101,63 @@ npm install
 npm run dev
 ```
 
+## Deployed Contracts (Base Sepolia)
+
+| Contract | Address | Explorer |
+|----------|---------|----------|
+| AegisTreasury | `0x33E42b7db9569fb4f3cd6d68180fcC007AE6ece7` | [BaseScan](https://sepolia.basescan.org/address/0x33E42b7db9569fb4f3cd6d68180fcC007AE6ece7) |
+| MockUSDC | `0x62932909ab43336B6710444DA8232333157a6f7c` | [BaseScan](https://sepolia.basescan.org/address/0x62932909ab43336B6710444DA8232333157a6f7c) |
+
+### On-Chain Proof
+
+- **Agent Transfer** (10 USDC, reason logged on-chain): [`0x7421a7...`](https://sepolia.basescan.org/tx/0x7421a7528b4a1f863be14d91fab0cffdee7369f6790a551750c829117ef8e1a0)
+- **Treasury Deposit** (1000 USDC): [`0x468a63...`](https://sepolia.basescan.org/tx/0x468a63a5834311af4957826cc989bb6e772aa8b6ebdfcc645e1bf2d0b37aab2f)
+- **Agent Allowance Set** (500 USDC scope): [`0x6f2e1e...`](https://sepolia.basescan.org/tx/0x6f2e1e26275489720bb9a3c122f8a0ce1899b6f1e233ce40e3eeba08a982deea)
+
+## MetaMask Delegation Framework
+
+Aegis integrates the MetaMask Delegation Framework (`@metamask/smart-accounts-kit`) for production-grade scoped delegations:
+
+- **CaveatBuilder** — combine `allowedTargets`, `timestamp`, and `erc20TransferAmount` enforcers
+- **EIP-712 signed delegations** — off-chain creation, on-chain enforcement
+- **Sub-delegations** — agents can further delegate narrowed authority to specialist sub-agents
+- **Instant revocation** — delegator can disable any delegation at any time
+
+See [`agent/src/lib/delegation.ts`](agent/src/lib/delegation.ts) and [`agent/src/lib/metamask-integration.ts`](agent/src/lib/metamask-integration.ts) for the full integration.
+
+## Uniswap Integration
+
+The agent can execute token swaps via Uniswap V3 on Base:
+
+- **SwapRouter02** direct integration for `exactInputSingle` swaps
+- **Uniswap Trading API** support for optimal routing across V2/V3/V4 + UniswapX
+- **Automatic approval** management for ERC-20 tokens
+
+See [`agent/src/lib/uniswap.ts`](agent/src/lib/uniswap.ts).
+
+## Venice AI (Private Inference)
+
+The agent uses Venice AI for privacy-preserving strategy analysis. Venice runs open-source models with zero data retention — the agent's strategy reasoning is never stored or visible to third parties.
+
 ## Bounty Tracks
 
-- **MetaMask Delegation** — Scoped, revocable spending permissions for AI agents
-- **Venice** — Private inference for agent strategy analysis
-- **Protocol Labs** — Autonomous agent with on-chain identity and execution logs
-- **Open Track** — Agent treasury infrastructure
+| Track | Prize | Why Aegis Qualifies |
+|-------|-------|-------------------|
+| **MetaMask Delegation** | $5,000 | Creative use of CaveatBuilder with scoped ERC-20 permissions, time bounds, and target restrictions |
+| **Venice** | $11,500 | Private inference for treasury analysis — strategy stays confidential |
+| **Protocol Labs** | $16,000 | Autonomous agent with on-chain execution logs, ERC-8004 identity |
+| **Uniswap** | $5,000 | Real swap integration via SwapRouter02 and Trading API |
+| **Open Track** | $14,500 | Cross-sponsor agent treasury infrastructure |
 
 ## Tech Stack
 
-- **Solidity** (Foundry) — AegisTreasury contract on Base
-- **TypeScript** — Agent SDK with viem
+- **Solidity** (Foundry) — AegisTreasury contract, 19 passing tests
+- **TypeScript** — Agent SDK with viem, real on-chain execution
+- **MetaMask Smart Accounts Kit** — Delegation framework with caveat enforcers
 - **Venice AI** — Private inference via OpenAI-compatible API
-- **Next.js** — Web dashboard with wagmi
-- **Base** — L2 deployment (low gas, fast finality)
+- **Uniswap V3** — Token swap execution on Base
+- **Next.js + wagmi** — Web dashboard with wallet connection
+- **Base Sepolia** — L2 deployment (low gas, fast finality)
 
 ## License
 
@@ -122,4 +165,4 @@ MIT
 
 ---
 
-*Built at [The Synthesis](https://synthesis.md) — the first hackathon you can enter without a body.*
+*Built at [The Synthesis](https://synthesis.md) by [Anish De](https://x.com/AnishDe12020) and Opus (Claude Opus 4.6).*
