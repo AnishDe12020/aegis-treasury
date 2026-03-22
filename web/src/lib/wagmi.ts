@@ -11,6 +11,6 @@ export const config = createConfig(
     walletConnectProjectId:
       process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID ?? "",
     appName: "Aegis Treasury",
-    appDescription: "Agent treasury management on Base",
+    appDescription: "Scoped, revocable spending authority for AI agents on Base",
   })
 );

@@ -1,8 +1,8 @@
-export const TREASURY_ADDRESS = (process.env.NEXT_PUBLIC_TREASURY_ADDRESS ??
-  "0x0000000000000000000000000000000000000000") as `0x${string}`;
+export const TREASURY_ADDRESS =
+  "0x33E42b7db9569fb4f3cd6d68180fcC007AE6ece7" as `0x${string}`;
 
 export const USDC_ADDRESS =
-  "0x036CbD53842c5426634e7929541eC2318f3dCF7e" as `0x${string}`;
+  "0x62932909ab43336B6710444DA8232333157a6f7c" as `0x${string}`;
 
 export const USDC_DECIMALS = 6;
 

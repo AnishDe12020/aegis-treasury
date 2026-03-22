@@ -20,6 +20,7 @@ export default function Treasury() {
   const { address, isConnected } = useAccount();
   const [depositAmount, setDepositAmount] = useState("");
   const [withdrawAmount, setWithdrawAmount] = useState("");
+  const [activeTab, setActiveTab] = useState<"deposit" | "withdraw">("deposit");
 
   // Read treasury USDC balance
   const { data: treasuryBalance, refetch: refetchBalance } = useReadContract({
@@ -95,7 +96,6 @@ export default function Treasury() {
     if (!depositAmount || !address) return;
     const amount = parseUnits(depositAmount, USDC_DECIMALS);
 
-    // Check if we need to approve first
     if (!currentAllowance || currentAllowance < amount) {
       approve(
         {
@@ -106,7 +106,6 @@ export default function Treasury() {
         },
         {
           onSuccess: () => {
-            // After approval, do the deposit
             setTimeout(() => {
               refetchAllowance();
               deposit(
@@ -172,14 +171,24 @@ export default function Treasury() {
     ? formatUnits(userBalance, USDC_DECIMALS)
     : "0";
 
+  const isDepositBusy =
+    isApproving || isApproveConfirming || isDepositing || isDepositConfirming;
+  const isWithdrawBusy = isWithdrawing || isWithdrawConfirming;
+
   return (
-    <div className="card space-y-6">
+    <div className="glass-card-glow animate-fade-in-up space-y-5">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-aegis-accent/10">
+          <div
+            className="flex h-10 w-10 items-center justify-center rounded-xl"
+            style={{
+              background:
+                "linear-gradient(135deg, rgba(59,130,246,0.15) 0%, rgba(139,92,246,0.15) 100%)",
+            }}
+          >
             <svg
-              className="h-5 w-5 text-aegis-accent"
+              className="h-5 w-5 text-blue-400"
               fill="none"
               viewBox="0 0 24 24"
               strokeWidth={1.5}
@@ -193,115 +202,183 @@ export default function Treasury() {
             </svg>
           </div>
           <div>
-            <h2 className="text-lg font-semibold text-aegis-text">Treasury</h2>
-            <p className="text-xs text-aegis-muted">USDC on Base Sepolia</p>
+            <h2 className="text-base font-semibold text-white">Treasury</h2>
+            <p className="text-[11px] text-aegis-muted">USDC on Base Sepolia</p>
           </div>
         </div>
         {isOwner && (
-          <span className="rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-xs font-medium text-emerald-400">
+          <span
+            className="rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-emerald-400"
+            style={{
+              background: "rgba(52,211,153,0.08)",
+              border: "1px solid rgba(52,211,153,0.15)",
+            }}
+          >
             Owner
           </span>
         )}
       </div>
 
-      {/* Balance display */}
-      <div className="rounded-lg bg-aegis-bg/60 p-4">
-        <p className="label">Treasury Balance</p>
-        <p className="text-3xl font-bold tracking-tight text-white">
+      {/* Balance */}
+      <div
+        className="rounded-xl p-5"
+        style={{
+          background:
+            "linear-gradient(135deg, rgba(59,130,246,0.06) 0%, rgba(139,92,246,0.04) 100%)",
+          border: "1px solid rgba(255,255,255,0.04)",
+        }}
+      >
+        <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.1em] text-aegis-muted">
+          Treasury Balance
+        </p>
+        <p className="stat-number">
           {Number(formattedTreasuryBalance).toLocaleString(undefined, {
             minimumFractionDigits: 2,
             maximumFractionDigits: 2,
           })}
-          <span className="ml-2 text-base font-medium text-aegis-muted">
+          <span className="ml-2 text-sm font-medium text-aegis-text-dim">
             USDC
           </span>
         </p>
         {isConnected && (
-          <p className="mt-2 text-xs text-aegis-text-dim">
-            Your wallet:{" "}
-            {Number(formattedUserBalance).toLocaleString(undefined, {
-              minimumFractionDigits: 2,
-              maximumFractionDigits: 2,
-            })}{" "}
-            USDC
-          </p>
+          <div className="mt-3 flex items-center gap-2 text-xs text-aegis-text-dim">
+            <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M21 12a2.25 2.25 0 0 0-2.25-2.25H15a3 3 0 1 1-6 0H5.25A2.25 2.25 0 0 0 3 12m18 0v6a2.25 2.25 0 0 1-2.25 2.25H5.25A2.25 2.25 0 0 1 3 18v-6m18 0V9M3 12V9m18 0a2.25 2.25 0 0 0-2.25-2.25H5.25A2.25 2.25 0 0 0 3 9m18 0V6a2.25 2.25 0 0 0-2.25-2.25H5.25A2.25 2.25 0 0 0 3 6v3" />
+            </svg>
+            <span>
+              Your wallet:{" "}
+              <span className="font-medium text-aegis-text">
+                {Number(formattedUserBalance).toLocaleString(undefined, {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })}{" "}
+                USDC
+              </span>
+            </span>
+          </div>
         )}
       </div>
 
-      {/* Deposit / Withdraw */}
+      {/* Deposit / Withdraw tabs */}
       {isConnected && isOwner && (
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div className="space-y-2">
-            <label className="label">Deposit USDC</label>
-            <div className="flex gap-2">
-              <input
-                type="number"
-                placeholder="0.00"
-                value={depositAmount}
-                onChange={(e) => setDepositAmount(e.target.value)}
-                min="0"
-                step="0.01"
-              />
-              <button
-                onClick={handleDeposit}
-                disabled={
-                  !depositAmount ||
-                  isApproving ||
-                  isApproveConfirming ||
-                  isDepositing ||
-                  isDepositConfirming
-                }
-                className="btn-primary shrink-0"
-              >
-                {isApproving || isApproveConfirming
-                  ? "Approving..."
-                  : isDepositing || isDepositConfirming
-                    ? "Depositing..."
-                    : "Deposit"}
-              </button>
-            </div>
+        <div className="space-y-4">
+          {/* Tab switcher */}
+          <div
+            className="flex rounded-xl p-1"
+            style={{ background: "rgba(255,255,255,0.03)" }}
+          >
+            <button
+              onClick={() => setActiveTab("deposit")}
+              className={`flex-1 rounded-lg py-2 text-sm font-medium transition-all duration-200 ${
+                activeTab === "deposit"
+                  ? "bg-gradient-to-r from-blue-500/20 to-purple-500/20 text-white shadow-sm"
+                  : "text-aegis-text-dim hover:text-aegis-text"
+              }`}
+            >
+              Deposit
+            </button>
+            <button
+              onClick={() => setActiveTab("withdraw")}
+              className={`flex-1 rounded-lg py-2 text-sm font-medium transition-all duration-200 ${
+                activeTab === "withdraw"
+                  ? "bg-gradient-to-r from-blue-500/20 to-purple-500/20 text-white shadow-sm"
+                  : "text-aegis-text-dim hover:text-aegis-text"
+              }`}
+            >
+              Withdraw
+            </button>
           </div>
 
-          <div className="space-y-2">
-            <label className="label">Withdraw USDC</label>
-            <div className="flex gap-2">
-              <input
-                type="number"
-                placeholder="0.00"
-                value={withdrawAmount}
-                onChange={(e) => setWithdrawAmount(e.target.value)}
-                min="0"
-                step="0.01"
-              />
-              <button
-                onClick={handleWithdraw}
-                disabled={
-                  !withdrawAmount || isWithdrawing || isWithdrawConfirming
-                }
-                className="btn-ghost shrink-0"
-              >
-                {isWithdrawing || isWithdrawConfirming
-                  ? "Withdrawing..."
-                  : "Withdraw"}
-              </button>
+          {/* Deposit */}
+          {activeTab === "deposit" && (
+            <div className="space-y-3">
+              <label className="label">Amount (USDC)</label>
+              <div className="flex gap-3">
+                <div className="relative flex-1">
+                  <input
+                    type="number"
+                    placeholder="0.00"
+                    value={depositAmount}
+                    onChange={(e) => setDepositAmount(e.target.value)}
+                    min="0"
+                    step="0.01"
+                    className="pr-16"
+                  />
+                  <button
+                    onClick={() => setDepositAmount(formattedUserBalance)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 rounded-md px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-blue-400 transition-colors hover:bg-blue-500/10"
+                  >
+                    Max
+                  </button>
+                </div>
+                <button
+                  onClick={handleDeposit}
+                  disabled={!depositAmount || isDepositBusy}
+                  className="btn-primary shrink-0"
+                >
+                  {isApproving || isApproveConfirming
+                    ? "Approving..."
+                    : isDepositing || isDepositConfirming
+                      ? "Depositing..."
+                      : "Deposit"}
+                </button>
+              </div>
             </div>
-          </div>
+          )}
+
+          {/* Withdraw */}
+          {activeTab === "withdraw" && (
+            <div className="space-y-3">
+              <label className="label">Amount (USDC)</label>
+              <div className="flex gap-3">
+                <div className="relative flex-1">
+                  <input
+                    type="number"
+                    placeholder="0.00"
+                    value={withdrawAmount}
+                    onChange={(e) => setWithdrawAmount(e.target.value)}
+                    min="0"
+                    step="0.01"
+                    className="pr-16"
+                  />
+                  <button
+                    onClick={() => setWithdrawAmount(formattedTreasuryBalance)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 rounded-md px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-blue-400 transition-colors hover:bg-blue-500/10"
+                  >
+                    Max
+                  </button>
+                </div>
+                <button
+                  onClick={handleWithdraw}
+                  disabled={!withdrawAmount || isWithdrawBusy}
+                  className="btn-ghost shrink-0"
+                >
+                  {isWithdrawBusy ? "Withdrawing..." : "Withdraw"}
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
       {/* Contract address */}
-      <div className="flex items-center gap-2 border-t border-aegis-border pt-4 text-xs text-aegis-muted">
-        <span>Contract:</span>
-        <code className="mono text-aegis-text-dim">
+      <div
+        className="flex items-center gap-2 rounded-xl px-4 py-3 text-xs text-aegis-muted"
+        style={{ background: "rgba(255,255,255,0.02)" }}
+      >
+        <svg className="h-3.5 w-3.5 shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M13.19 8.688a4.5 4.5 0 0 1 1.242 7.244l-4.5 4.5a4.5 4.5 0 0 1-6.364-6.364l1.757-1.757m13.35-.622 1.757-1.757a4.5 4.5 0 0 0-6.364-6.364l-4.5 4.5a4.5 4.5 0 0 0 1.242 7.244" />
+        </svg>
+        <code className="font-mono text-[11px] text-aegis-text-dim">
           {TREASURY_ADDRESS.slice(0, 6)}...{TREASURY_ADDRESS.slice(-4)}
         </code>
         <a
           href={`https://sepolia.basescan.org/address/${TREASURY_ADDRESS}`}
           target="_blank"
           rel="noopener noreferrer"
-          className="ml-auto text-aegis-accent transition-colors hover:text-aegis-accent-hover"
+          className="ml-auto text-blue-400/70 transition-colors hover:text-blue-400"
         >
-          View on BaseScan
+          View on BaseScan &#8599;
         </a>
       </div>
     </div>

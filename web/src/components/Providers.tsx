@@ -26,12 +26,22 @@ export default function Providers({ children }: { children: ReactNode }) {
           theme="midnight"
           customTheme={{
             "--ck-font-family": "Inter, system-ui, sans-serif",
-            "--ck-border-radius": "12px",
-            "--ck-overlay-background": "rgba(0, 0, 0, 0.6)",
-            "--ck-body-background": "#1a2235",
+            "--ck-border-radius": "16px",
+            "--ck-overlay-background": "rgba(0, 0, 0, 0.7)",
+            "--ck-overlay-backdrop-filter": "blur(8px)",
+            "--ck-body-background": "#0f0f19",
             "--ck-body-color": "#e2e8f0",
-            "--ck-primary-button-background": "#3b82f6",
-            "--ck-primary-button-hover-background": "#2563eb",
+            "--ck-body-color-muted": "#525a73",
+            "--ck-body-color-danger": "#ef4444",
+            "--ck-primary-button-background":
+              "linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)",
+            "--ck-primary-button-hover-background":
+              "linear-gradient(135deg, #2563eb 0%, #7c3aed 100%)",
+            "--ck-primary-button-color": "#ffffff",
+            "--ck-primary-button-border-radius": "12px",
+            "--ck-secondary-button-background": "rgba(255,255,255,0.04)",
+            "--ck-secondary-button-border-radius": "12px",
+            "--ck-modal-box-shadow": "0 0 60px rgba(59,130,246,0.1)",
           }}
         >
           {children}
