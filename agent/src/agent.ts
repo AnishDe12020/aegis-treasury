@@ -1,6 +1,13 @@
 import 'dotenv/config';
 import { formatUnits, parseUnits, type Address } from 'viem';
 import { createClients } from './lib/client.js';
+import {
+  loadConfig,
+  printConfig,
+  validateConfig,
+  type AgentStrategy,
+} from './lib/config.js';
+import { NotificationManager } from './lib/notifications.js';
 import { getUniswapV3Price } from './lib/price-feed.js';
 import {
   DCAStrategy,
@@ -18,13 +25,11 @@ import {
 import { WETH_ADDRESS } from './lib/uniswap.js';
 import { analyzeStrategy, createVeniceClient } from './lib/venice.js';
 
-type StrategyFlag = 'dca' | 'momentum' | 'rebalance';
-
 interface Flags {
   dryRun: boolean;
   loop: boolean;
   intervalSec: number;
-  strategy?: StrategyFlag;
+  strategy: AgentStrategy;
 }
 
 interface PlannedExecution {
@@ -43,12 +48,23 @@ interface VeniceRecommendation {
   suggestedAmount?: number;
 }
 
-const STRATEGY_VALUES: readonly StrategyFlag[] = ['dca', 'momentum', 'rebalance'];
+const STRATEGY_VALUES: readonly AgentStrategy[] = ['dca', 'momentum', 'rebalance'];
+const AGENT_VERSION = process.env.npm_package_version ?? '0.1.0';
 
 let activeDcaKey: string | null = null;
 let activeDcaStrategy: DCAStrategy | null = null;
 let dailyVolumeUsdDate = '';
 let dailyVolumeUsd = 0;
+let previousRecommendationAction: string | null = null;
+
+const config = loadConfig();
+const notifications = new NotificationManager(config.notifications);
+const riskManager = new RiskManager({
+  maxSingleTradeUsd: config.riskLimits.maxTradeUsd,
+  maxDailyVolumeUsd: config.riskLimits.maxDailyUsd,
+  maxSlippageBps: config.riskLimits.maxSlippageBps,
+  minConfidence: config.riskLimits.minConfidence,
+});
 
 // ─── Logging ─────────────────────────────────────────────────────────
 function log(msg: string) {
@@ -61,15 +77,7 @@ function logError(msg: string) {
   console.error(`[${ts}] ERROR: ${msg}`);
 }
 
-function parsePositiveNumber(value: string | undefined, fallback: number): number {
-  const parsed = Number(value);
-  if (!Number.isFinite(parsed) || parsed <= 0) {
-    return fallback;
-  }
-  return parsed;
-}
-
-function parseStrategyFlag(args: string[]): StrategyFlag | undefined {
+function parseStrategyFlag(args: string[]): AgentStrategy | undefined {
   const inline = args.find((arg) => arg.startsWith('--strategy='));
   const next = args.find((arg, idx) => arg === '--strategy' && typeof args[idx + 1] === 'string');
 
@@ -83,8 +91,8 @@ function parseStrategyFlag(args: string[]): StrategyFlag | undefined {
     return undefined;
   }
 
-  if (STRATEGY_VALUES.includes(raw as StrategyFlag)) {
-    return raw as StrategyFlag;
+  if (STRATEGY_VALUES.includes(raw as AgentStrategy)) {
+    return raw as AgentStrategy;
   }
 
   throw new Error(`Invalid --strategy value "${raw}". Use one of: ${STRATEGY_VALUES.join(', ')}`);
@@ -141,40 +149,17 @@ async function estimateUsdNotional(
 // ─── CLI flags ───────────────────────────────────────────────────────
 function parseFlags(): Flags {
   const args = process.argv.slice(2);
-  const dryRun = !args.includes('--no-dry-run');
+  const dryRun = args.includes('--dry-run')
+    ? true
+    : args.includes('--no-dry-run')
+      ? false
+      : config.dryRun;
   const loop = args.includes('--loop');
   const intervalArg = args.find((arg) => arg.startsWith('--interval='));
   const intervalSec = intervalArg ? parseInt(intervalArg.split('=')[1], 10) : 60;
-  const strategy = parseStrategyFlag(args);
+  const strategy = parseStrategyFlag(args) ?? config.strategy;
   return { dryRun, loop, intervalSec, strategy };
 }
-
-// ─── Config ──────────────────────────────────────────────────────────
-const config = {
-  privateKey: process.env.AGENT_PRIVATE_KEY as `0x${string}`,
-  treasuryAddress: process.env.TREASURY_ADDRESS as `0x${string}`,
-  veniceApiKey: process.env.VENICE_API_KEY || '',
-  usdcAddress: (process.env.USDC_ADDRESS ||
-    '0x036CbD53842c5426634e7929541eC2318f3dCF7e') as `0x${string}`,
-  recipientAddress: process.env.RECIPIENT_ADDRESS as `0x${string}` | undefined,
-  rebalanceTokenAddress: (process.env.REBALANCE_TOKEN_ADDRESS || WETH_ADDRESS) as `0x${string}`,
-  targetUsdcWeight: parsePositiveNumber(process.env.TARGET_USDC_WEIGHT, 0.7),
-  targetSecondaryWeight: parsePositiveNumber(process.env.TARGET_SECONDARY_WEIGHT, 0.3),
-  dcaChunks: Math.floor(parsePositiveNumber(process.env.DCA_CHUNKS, 4)),
-  dcaIntervalMs: Math.floor(parsePositiveNumber(process.env.DCA_INTERVAL_MS, 60_000)),
-  momentumFeeTier: Math.floor(parsePositiveNumber(process.env.MOMENTUM_FEE_TIER, 3000)),
-  maxSingleTradeUsd: parsePositiveNumber(process.env.MAX_SINGLE_TRADE_USD, 2_500),
-  maxDailyVolumeUsd: parsePositiveNumber(process.env.MAX_DAILY_VOLUME_USD, 10_000),
-  maxSlippageBps: parsePositiveNumber(process.env.MAX_SLIPPAGE_BPS, 150),
-  minConfidence: parsePositiveNumber(process.env.MIN_CONFIDENCE, 0.7),
-};
-
-const riskManager = new RiskManager({
-  maxSingleTradeUsd: config.maxSingleTradeUsd,
-  maxDailyVolumeUsd: config.maxDailyVolumeUsd,
-  maxSlippageBps: config.maxSlippageBps,
-  minConfidence: config.minConfidence,
-});
 
 async function buildPlannedExecution(
   flags: Flags,
@@ -186,26 +171,6 @@ async function buildPlannedExecution(
   recipient?: Address,
 ): Promise<PlannedExecution | null> {
   const baseAmount = getSuggestedAmount(remainingUsdc, recommendation);
-
-  if (!flags.strategy) {
-    if (recommendation.action !== 'transfer' || recommendation.confidence <= 0.7) {
-      return null;
-    }
-    if (!recipient) {
-      throw new Error(
-        'Venice recommends transfer but RECIPIENT_ADDRESS is not set in env. Skipping execution.',
-      );
-    }
-
-    return {
-      token: config.usdcAddress,
-      to: recipient,
-      amount: baseAmount,
-      reason: recommendation.reasoning,
-      confidence: recommendation.confidence,
-      slippageBps: 0,
-    };
-  }
 
   if (recommendation.action !== 'transfer' && recommendation.action !== 'rebalance') {
     return null;
@@ -221,12 +186,12 @@ async function buildPlannedExecution(
       );
     }
 
-    const strategyKey = `${config.usdcAddress}:${baseAmount}:${config.dcaChunks}:${config.dcaIntervalMs}`;
+    const strategyKey = `${config.usdcAddress}:${baseAmount}:${config.dca.chunks}:${config.dca.intervalMs}`;
     if (!activeDcaStrategy || activeDcaKey !== strategyKey) {
       activeDcaStrategy = new DCAStrategy({
         totalAmount: baseAmount,
-        numChunks: config.dcaChunks,
-        intervalMs: config.dcaIntervalMs,
+        numChunks: config.dca.chunks,
+        intervalMs: config.dca.intervalMs,
         tokenIn: config.usdcAddress,
         tokenOut: config.usdcAddress,
       });
@@ -258,13 +223,24 @@ async function buildPlannedExecution(
       );
     }
 
-    const q1 = baseAmount / 4n > 0n ? baseAmount / 4n : 1n;
-    const q2 = baseAmount / 2n > 0n ? baseAmount / 2n : 1n;
-    const momentumStrategy = new MomentumStrategy(publicClient, config.momentumFeeTier);
+    const sampleAmounts = Array.from(
+      new Set(
+        [
+          ...config.momentum.sampleAmounts.map((amount) =>
+            clampAmountToAllowance(parseUnits(String(amount), 6), baseAmount),
+          ),
+          baseAmount,
+        ]
+          .filter((amount) => amount > 0n)
+          .map((amount) => amount.toString()),
+      ),
+    ).map((amount) => BigInt(amount));
+
+    const momentumStrategy = new MomentumStrategy(publicClient, config.momentum.fee);
     const analysis = await momentumStrategy.analyzeMomentum(
       config.usdcAddress,
       config.rebalanceTokenAddress,
-      [q1, q2, baseAmount],
+      sampleAmounts,
     );
 
     log(

@@ -334,7 +334,7 @@ export default function Treasury() {
                     className="pr-16"
                   />
                   <button
-                    onClick={() => setDepositAmount(formattedUserBalance)}
+                    onClick={() => setDepositAmount(rawUserBalance)}
                     className="absolute right-3 top-1/2 -translate-y-1/2 rounded-md px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-blue-400 transition-colors hover:bg-blue-500/10"
                   >
                     Max
@@ -371,7 +371,7 @@ export default function Treasury() {
                     className="pr-16"
                   />
                   <button
-                    onClick={() => setWithdrawAmount(formattedTreasuryBalance)}
+                    onClick={() => setWithdrawAmount(rawTreasuryBalance)}
                     className="absolute right-3 top-1/2 -translate-y-1/2 rounded-md px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-blue-400 transition-colors hover:bg-blue-500/10"
                   >
                     Max
@@ -391,25 +391,23 @@ export default function Treasury() {
       )}
 
       {/* Contract address */}
-      <div
-        className="flex items-center gap-2 rounded-xl px-4 py-3 text-xs text-aegis-muted"
-        style={{ background: "rgba(255,255,255,0.02)" }}
+      <a
+        href={`https://sepolia.basescan.org/address/${TREASURY_ADDRESS}`}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="flex items-center gap-2 rounded-xl px-4 py-3 text-xs text-aegis-muted transition-all duration-200 hover:border-blue-500/20"
+        style={{ background: "rgba(255,255,255,0.02)", border: "1px solid transparent" }}
       >
         <svg className="h-3.5 w-3.5 shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" d="M13.19 8.688a4.5 4.5 0 0 1 1.242 7.244l-4.5 4.5a4.5 4.5 0 0 1-6.364-6.364l1.757-1.757m13.35-.622 1.757-1.757a4.5 4.5 0 0 0-6.364-6.364l-4.5 4.5a4.5 4.5 0 0 0 1.242 7.244" />
         </svg>
-        <code className="font-mono text-[11px] text-aegis-text-dim">
+        <code className="font-mono text-[11px] text-aegis-text-dim transition-colors group-hover:text-blue-400">
           {TREASURY_ADDRESS.slice(0, 6)}...{TREASURY_ADDRESS.slice(-4)}
         </code>
-        <a
-          href={`https://sepolia.basescan.org/address/${TREASURY_ADDRESS}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="ml-auto text-blue-400/70 transition-colors hover:text-blue-400"
-        >
+        <span className="ml-auto text-blue-400/70 transition-colors hover:text-blue-400">
           View on BaseScan &#8599;
-        </a>
-      </div>
+        </span>
+      </a>
     </div>
   );
 }

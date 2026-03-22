@@ -203,7 +203,26 @@ export default function AgentActivity() {
           a.blockNumber > b.blockNumber ? -1 : a.blockNumber < b.blockNumber ? 1 : 0
         );
 
-        setEvents(allEvents.slice(0, 50));
+        // Fetch timestamps for the most recent events
+        const topEvents = allEvents.slice(0, 50);
+        const uniqueBlocks = [...new Set(topEvents.map(e => e.blockNumber))];
+        const blockTimestamps = new Map<bigint, number>();
+        await Promise.all(
+          uniqueBlocks.slice(0, 20).map(async (blockNum) => {
+            try {
+              const block = await publicClient.getBlock({ blockNumber: blockNum });
+              blockTimestamps.set(blockNum, Number(block.timestamp));
+            } catch {
+              // ignore timestamp fetch failures
+            }
+          })
+        );
+        for (const event of topEvents) {
+          const ts = blockTimestamps.get(event.blockNumber);
+          if (ts) event.timestamp = ts;
+        }
+
+        setEvents(topEvents);
       } catch (err) {
         console.error("Failed to fetch events:", err);
       } finally {
@@ -216,6 +235,17 @@ export default function AgentActivity() {
 
   const shortenAddr = (addr?: string) =>
     addr ? `${addr.slice(0, 6)}...${addr.slice(-4)}` : "";
+
+  const formatRelativeTime = (timestamp?: number) => {
+    if (!timestamp) return null;
+    const now = Math.floor(Date.now() / 1000);
+    const diff = now - timestamp;
+    if (diff < 60) return "just now";
+    if (diff < 3600) return `${Math.floor(diff / 60)} min ago`;
+    if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+    if (diff < 604800) return `${Math.floor(diff / 86400)}d ago`;
+    return new Date(timestamp * 1000).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  };
 
   return (
     <div className="glass-card animate-fade-in-up-delay-2">
@@ -275,12 +305,14 @@ export default function AgentActivity() {
               border: "1px dashed rgba(255,255,255,0.06)",
             }}
           >
-            <svg className="mb-3 h-8 w-8 text-aegis-muted/50" fill="none" viewBox="0 0 24 24" strokeWidth={1} stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
-            </svg>
-            <p className="text-sm text-aegis-muted">No events found</p>
-            <p className="mt-1 text-[11px] text-aegis-text-dim">
-              Activity will appear after transactions
+            <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl" style={{ background: "rgba(139,92,246,0.06)" }}>
+              <svg className="h-6 w-6 text-aegis-muted/50" fill="none" viewBox="0 0 24 24" strokeWidth={1} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+              </svg>
+            </div>
+            <p className="text-sm font-medium text-aegis-muted">No activity yet</p>
+            <p className="mt-1 max-w-[220px] text-center text-[11px] leading-relaxed text-aegis-text-dim">
+              On-chain events will appear here once agents start transacting
             </p>
           </div>
         ) : (
@@ -351,7 +383,13 @@ export default function AgentActivity() {
                       )}
 
                       <div className="flex items-center gap-3 text-[10px] text-aegis-muted">
-                        <span className="font-mono">Block #{event.blockNumber.toString()}</span>
+                        {event.timestamp ? (
+                          <span title={`Block #${event.blockNumber.toString()}`}>
+                            {formatRelativeTime(event.timestamp)}
+                          </span>
+                        ) : (
+                          <span className="font-mono">Block #{event.blockNumber.toString()}</span>
+                        )}
                         <a
                           href={`https://sepolia.basescan.org/tx/${event.transactionHash}`}
                           target="_blank"
