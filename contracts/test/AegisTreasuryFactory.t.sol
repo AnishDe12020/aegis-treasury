@@ -75,4 +75,13 @@ contract AegisTreasuryFactoryTest is Test {
         assertEq(all[1], bobTreasury);
         assertEq(all[2], carolTreasury);
     }
+
+    function test_createTreasury_revertsWhenOwnerAlreadyHasTreasury() public {
+        vm.prank(alice);
+        factory.createTreasury();
+
+        vm.prank(alice);
+        vm.expectRevert("Treasury already exists");
+        factory.createTreasury();
+    }
 }
