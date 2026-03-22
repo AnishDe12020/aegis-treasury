@@ -139,7 +139,7 @@ export class MomentumStrategy {
       new Set(sampleAmounts.filter((amount) => amount > 0n).map((amount) => amount.toString())),
     )
       .map((value) => BigInt(value))
-      .sort((a, b) => (a < b ? -1 : 1));
+      .sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
 
     if (amounts.length < 2) {
       return { trend: 'sideways', confidence: 0, priceImpactBps: 0 };
