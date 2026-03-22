@@ -310,7 +310,7 @@ async function buildPlannedExecution(
 }
 
 function printStartupBanner(flags: Flags) {
-  const line = '═'.repeat(72);
+  const line = '='.repeat(72);
   console.log(`\n\x1b[1m\x1b[36m${line}\x1b[0m`);
   console.log(`\x1b[1m\x1b[36mAegis Agent v${AGENT_VERSION}\x1b[0m`);
   console.log(
