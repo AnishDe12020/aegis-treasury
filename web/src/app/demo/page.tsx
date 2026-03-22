@@ -6,6 +6,8 @@ import { baseSepolia } from 'viem/chains';
 import PriceChart from '@/components/PriceChart';
 import TokenScreener from '@/components/TokenScreener';
 import PnLChart from '@/components/PnLChart';
+import MarketSentiment from '@/components/MarketSentiment';
+import PortfolioOptimizer from '@/components/PortfolioOptimizer';
 import { TREASURY_ADDRESS, USDC_ADDRESS, USDC_DECIMALS, TREASURY_ABI, ERC20_ABI } from '@/lib/contracts';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
@@ -1008,7 +1010,15 @@ export default function DemoPage() {
                 <TokenScreener />
               </div>
 
-              {/* Row 2: PnL Chart + Portfolio */}
+              {/* Row 2: Market Sentiment + Portfolio Optimizer */}
+              <div className="min-h-[280px]">
+                <MarketSentiment />
+              </div>
+              <div className="min-h-[280px]">
+                <PortfolioOptimizer />
+              </div>
+
+              {/* Row 3: PnL Chart + Portfolio */}
               <div className="min-h-[280px]">
                 <PnLChart />
               </div>

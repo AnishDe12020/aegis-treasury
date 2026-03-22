@@ -11,3 +11,6 @@ export * from './lib/erc8004.js';
 export * from './lib/analytics.js';
 export * from './lib/config.js';
 export * from './lib/notifications.js';
+export * from './lib/portfolio-optimizer.js';
+export * from './lib/market-sentiment.js';
+export * from './lib/agent-memory.js';

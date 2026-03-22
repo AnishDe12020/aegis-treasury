@@ -13,6 +13,9 @@ import TerminalFeed from "@/components/TerminalFeed";
 import StrategyPanel from "@/components/StrategyPanel";
 import VenicePanel from "@/components/VenicePanel";
 import AgentChat from "@/components/AgentChat";
+import DelegationPanel from "@/components/DelegationPanel";
+import MarketSentiment from "@/components/MarketSentiment";
+import PortfolioOptimizer from "@/components/PortfolioOptimizer";
 import { useAccount, useReadContract } from "wagmi";
 import {
   TREASURY_ADDRESS,
@@ -163,7 +166,15 @@ function DashboardView() {
           <TokenScreener />
         </div>
 
-        {/* Row 2: PnL Chart + Portfolio */}
+        {/* Row 2: Market Sentiment + Portfolio Optimizer */}
+        <div className="min-h-[280px]">
+          <MarketSentiment />
+        </div>
+        <div className="min-h-[280px]">
+          <PortfolioOptimizer />
+        </div>
+
+        {/* Row 3: PnL Chart + Portfolio */}
         <div className="min-h-[280px]">
           <PnLChart />
         </div>
@@ -188,6 +199,11 @@ function DashboardView() {
           <StrategyPanel />
           <VenicePanel />
           <EmergencyControls />
+        </div>
+
+        {/* Row 5: MetaMask Delegation Framework — full width */}
+        <div className="lg:col-span-2">
+          <DelegationPanel />
         </div>
       </div>
 

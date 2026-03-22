@@ -24,10 +24,16 @@ import {
 } from './lib/treasury.js';
 import { WETH_ADDRESS } from './lib/uniswap.js';
 import { analyzeStrategy, createVeniceClient } from './lib/venice.js';
+import {
+  AgentMemory,
+  type DecisionRecord,
+  type PerformanceStats,
+} from './lib/agent-memory.js';
 
 interface Flags {
   dryRun: boolean;
   loop: boolean;
+  history: boolean;
   intervalSec: number;
   strategy: AgentStrategy;
 }
@@ -59,6 +65,7 @@ let previousRecommendationAction: string | null = null;
 
 const config = loadConfig();
 const notifications = new NotificationManager(config.notifications);
+const memory = new AgentMemory();
 const riskManager = new RiskManager({
   maxSingleTradeUsd: config.riskLimits.maxTradeUsd,
   maxDailyVolumeUsd: config.riskLimits.maxDailyUsd,
@@ -155,10 +162,11 @@ function parseFlags(): Flags {
       ? false
       : config.dryRun;
   const loop = args.includes('--loop');
+  const history = args.includes('--history');
   const intervalArg = args.find((arg) => arg.startsWith('--interval='));
   const intervalSec = intervalArg ? parseInt(intervalArg.split('=')[1], 10) : 60;
   const strategy = parseStrategyFlag(args) ?? config.strategy;
-  return { dryRun, loop, intervalSec, strategy };
+  return { dryRun, loop, history, intervalSec, strategy };
 }
 
 async function buildPlannedExecution(
@@ -309,15 +317,49 @@ async function buildPlannedExecution(
   };
 }
 
-function printStartupBanner(flags: Flags) {
+function printStartupBanner(flags: Flags, stats: PerformanceStats) {
   const line = '='.repeat(72);
   console.log(`\n\x1b[1m\x1b[36m${line}\x1b[0m`);
   console.log(`\x1b[1m\x1b[36mAegis Agent v${AGENT_VERSION}\x1b[0m`);
   console.log(
-    `\x1b[36mStatus:\x1b[0m ${flags.loop ? 'running (loop)' : 'single run'} | dryRun=${flags.dryRun} | strategy=${flags.strategy}`,
+    `\x1b[36mStatus:\x1b[0m ${flags.loop ? 'running (loop)' : 'single run'} | dryRun=${flags.dryRun} | strategy=${flags.strategy} | history=${flags.history}`,
+  );
+  console.log(
+    `\x1b[36mPerformance:\x1b[0m winRate=${(stats.winRate * 100).toFixed(1)}% | avgReturn=${stats.averageReturn.toFixed(2)}% | totalPnL=${stats.totalPnL.toFixed(2)} | decisions=${stats.totalDecisions} | evaluated=${stats.evaluatedDecisions}`,
   );
   console.log(printConfig(config));
   console.log(`\x1b[1m\x1b[36m${line}\x1b[0m\n`);
+}
+
+function printDecisionHistory(entries: readonly DecisionRecord[]) {
+  if (entries.length === 0) {
+    console.log('No decision history found.');
+    return;
+  }
+
+  console.log('=== Recent Decision History ===');
+  for (const entry of entries) {
+    console.log(`[${entry.timestamp}] action=${entry.action}`);
+    console.log(`  reasoning: ${entry.reasoning}`);
+    if (typeof entry.outcome.confidence === 'number') {
+      console.log(`  confidence: ${(entry.outcome.confidence * 100).toFixed(1)}%`);
+    }
+    if (typeof entry.outcome.executed === 'boolean') {
+      console.log(`  executed: ${entry.outcome.executed}`);
+    }
+    if (typeof entry.outcome.success === 'boolean') {
+      console.log(`  success: ${entry.outcome.success}`);
+    }
+    if (typeof entry.outcome.returnPct === 'number') {
+      console.log(`  returnPct: ${entry.outcome.returnPct.toFixed(2)}%`);
+    }
+    if (typeof entry.outcome.pnl === 'number') {
+      console.log(`  pnl: ${entry.outcome.pnl.toFixed(2)}`);
+    }
+    if (entry.outcome.notes) {
+      console.log(`  notes: ${entry.outcome.notes}`);
+    }
+  }
 }
 
 // ─── Single cycle ────────────────────────────────────────────────────
@@ -409,6 +451,16 @@ If you recommend a transfer or rebalance, include a "suggestedAmount" field (in 
   log(`  Action: ${recommendation.action}`);
   log(`  Reasoning: ${recommendation.reasoning}`);
   log(`  Confidence: ${(recommendation.confidence * 100).toFixed(1)}%`);
+  try {
+    await memory.recordDecision(recommendation.action, recommendation.reasoning, {
+      executed: recommendation.action === 'transfer' || recommendation.action === 'rebalance',
+      confidence: recommendation.confidence,
+      notes: `strategy=${flags.strategy}`,
+    });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    logError(`Failed to persist decision memory: ${message}`);
+  }
 
   let plan: PlannedExecution | null = null;
   try {
@@ -537,10 +589,17 @@ If you recommend a transfer or rebalance, include a "suggestedAmount" field (in 
 async function main() {
   validateConfig(config);
   const flags = parseFlags();
-  printStartupBanner(flags);
+  const stats = await memory.getPerformanceStats();
+  printStartupBanner(flags, stats);
+
+  if (flags.history) {
+    const history = await memory.getDecisionHistory(20);
+    printDecisionHistory(history);
+    return;
+  }
 
   log(
-    `Mode: dryRun=${flags.dryRun}, loop=${flags.loop}, interval=${flags.intervalSec}s, strategy=${flags.strategy}`,
+    `Mode: dryRun=${flags.dryRun}, loop=${flags.loop}, interval=${flags.intervalSec}s, strategy=${flags.strategy}, history=${flags.history}`,
   );
 
   if (flags.loop) {
