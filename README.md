@@ -6,7 +6,7 @@
     <img src="https://img.shields.io/badge/Foundry-Solidity%200.8.28-363636?style=flat-square" alt="Foundry" />
     <img src="https://img.shields.io/badge/TypeScript-5.x-3178C6?style=flat-square&logo=typescript&logoColor=white" alt="TypeScript" />
     <img src="https://img.shields.io/badge/License-MIT-green?style=flat-square" alt="MIT License" />
-    <img src="https://img.shields.io/badge/Tests-38%20passing-brightgreen?style=flat-square" alt="Tests" />
+    <img src="https://img.shields.io/badge/Tests-50%20passing-brightgreen?style=flat-square" alt="Tests" />
   </p>
 </p>
 
@@ -90,6 +90,8 @@ Aegis is a treasury vault that sits between the human and the agent. The human d
 | Contract | Address | Explorer |
 |----------|---------|----------|
 | AegisTreasury | `0x33E42b7db9569fb4f3cd6d68180fcC007AE6ece7` | [BaseScan](https://sepolia.basescan.org/address/0x33E42b7db9569fb4f3cd6d68180fcC007AE6ece7) |
+| AegisTreasuryV2 | `0xF3c6Aec3125A45B10d074f19d3EE3D124e9F50D9` | [BaseScan](https://sepolia.basescan.org/address/0xF3c6Aec3125A45B10d074f19d3EE3D124e9F50D9) |
+| AegisTreasuryFactory | `0x43EF4a074C9A00437B536533d6b6a95D7Bc0D9Fe` | [BaseScan](https://sepolia.basescan.org/address/0x43EF4a074C9A00437B536533d6b6a95D7Bc0D9Fe) |
 | MockUSDC | `0x62932909ab43336B6710444DA8232333157a6f7c` | [BaseScan](https://sepolia.basescan.org/address/0x62932909ab43336B6710444DA8232333157a6f7c) |
 
 ### On-Chain Proof
@@ -241,7 +243,7 @@ aegis/
 
 ## Testing
 
-Aegis has **38 passing tests** covering the full contract surface:
+Aegis has **50 passing tests** covering the full contract surface:
 
 ```bash
 cd contracts
