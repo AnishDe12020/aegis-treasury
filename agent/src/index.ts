@@ -5,3 +5,5 @@ export * from './lib/venice.js';
 export * from './lib/delegation.js';
 export * from './lib/uniswap.js';
 export * from './lib/batch.js';
+export * from './lib/price-feed.js';
+export * from './lib/trading.js';
