@@ -1,6 +1,60 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { createPublicClient, http, encodeFunctionData, decodeFunctionResult } from 'viem';
+import { base } from 'viem/chains';
+
+const baseClient = createPublicClient({
+  chain: base,
+  transport: http('https://base.drpc.org'),
+});
+
+// Base mainnet token addresses
+const BASE_TOKENS: Record<string, `0x${string}`> = {
+  WETH: '0x4200000000000000000000000000000000000006',
+  USDC: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
+  USDbC: '0xd9aAEc86B65D86f6A7B5B1b0c42FFA531710b6ab',
+  cbETH: '0x2Ae3F1Ec7F1F5012CFEab0185bfc7aa3cf0DEc22',
+  AERO: '0x940181a94A35A4569E4529A3CDfB74e38FD98631',
+};
+
+const QUOTER_V2 = '0x3d4e44Eb1374240CE5F1B871ab261CD16335B76a' as `0x${string}`;
+
+const QUOTER_ABI = [
+  {
+    type: 'function',
+    name: 'quoteExactInputSingle',
+    inputs: [
+      {
+        name: 'params',
+        type: 'tuple',
+        components: [
+          { name: 'tokenIn', type: 'address' },
+          { name: 'tokenOut', type: 'address' },
+          { name: 'amountIn', type: 'uint256' },
+          { name: 'fee', type: 'uint24' },
+          { name: 'sqrtPriceLimitX96', type: 'uint160' },
+        ],
+      },
+    ],
+    outputs: [
+      { name: 'amountOut', type: 'uint256' },
+      { name: 'sqrtPriceX96After', type: 'uint160' },
+      { name: 'initializedTicksCrossed', type: 'uint32' },
+      { name: 'gasEstimate', type: 'uint256' },
+    ],
+    stateMutability: 'nonpayable',
+  },
+] as const;
+
+// Token decimals on Base mainnet
+const TOKEN_DECIMALS: Record<string, number> = {
+  WETH: 18,
+  cbETH: 18,
+  AERO: 18,
+  USDC: 6,
+  USDbC: 6,
+};
 
 interface TokenData {
   symbol: string;
@@ -10,7 +64,7 @@ interface TokenData {
   volume: number;
   marketCap: number;
   rank: number;
-  sparkline: number[]; // 24 data points for 24h trend
+  sparkline: number[];
 }
 
 function generateSparkline(basePrice: number, change: number): number[] {
@@ -24,6 +78,22 @@ function generateSparkline(basePrice: number, change: number): number[] {
   }
   return points;
 }
+
+// Fallback prices if RPC fails
+const FALLBACK_PRICES: Record<string, number> = {
+  WETH: 3456.78,
+  USDC: 1.0,
+  USDbC: 0.9998,
+  cbETH: 3612.45,
+  AERO: 1.42,
+  LINK: 18.42,
+  UNI: 12.85,
+  OP: 2.31,
+  ARB: 1.18,
+  MKR: 1842.30,
+  SNX: 3.47,
+  COMP: 67.24,
+};
 
 const INITIAL_TOKENS: TokenData[] = [
   { symbol: 'WETH', name: 'Wrapped Ether', price: 3_456.78, change24h: 2.34, volume: 1_870_000_000, marketCap: 415_000_000_000, rank: 2, sparkline: [] },
@@ -39,6 +109,55 @@ const INITIAL_TOKENS: TokenData[] = [
   { symbol: 'COMP', name: 'Compound', price: 67.24, change24h: 1.15, volume: 92_000_000, marketCap: 560_000_000, rank: 78, sparkline: [] },
   { symbol: 'USDbC', name: 'USD Base Coin', price: 0.9998, change24h: -0.02, volume: 120_000_000, marketCap: 2_100_000_000, rank: 85, sparkline: [] },
 ].map(t => ({ ...t, sparkline: generateSparkline(t.price, t.change24h) }));
+
+async function fetchRealPrice(symbol: string): Promise<number | null> {
+  const tokenAddress = BASE_TOKENS[symbol];
+  if (!tokenAddress) return null;
+
+  // Stablecoins just return $1
+  if (symbol === 'USDC' || symbol === 'USDbC') return symbol === 'USDC' ? 1.0 : 0.9998;
+
+  const usdcAddress = BASE_TOKENS.USDC;
+  const decimals = TOKEN_DECIMALS[symbol] ?? 18;
+  const amountIn = BigInt(10) ** BigInt(decimals); // 1 token
+
+  try {
+    const callData = encodeFunctionData({
+      abi: QUOTER_ABI,
+      functionName: 'quoteExactInputSingle',
+      args: [
+        {
+          tokenIn: tokenAddress,
+          tokenOut: usdcAddress,
+          amountIn,
+          fee: 3000,
+          sqrtPriceLimitX96: 0n,
+        },
+      ],
+    });
+
+    const result = await baseClient.call({
+      to: QUOTER_V2,
+      data: callData,
+    });
+
+    if (!result.data) return null;
+
+    const decoded = decodeFunctionResult({
+      abi: QUOTER_ABI,
+      functionName: 'quoteExactInputSingle',
+      data: result.data,
+    });
+
+    const amountOut = decoded[0];
+    // USDC has 6 decimals
+    const price = Number(amountOut) / 1e6;
+    return price > 0 ? price : null;
+  } catch (err) {
+    console.warn(`Failed to fetch price for ${symbol}:`, err);
+    return null;
+  }
+}
 
 function formatCompact(n: number): string {
   if (n >= 1_000_000_000) return `${(n / 1_000_000_000).toFixed(2)}B`;
@@ -93,6 +212,55 @@ export default function TokenScreener() {
   const [search, setSearch] = useState('');
   const [sortKey, setSortKey] = useState<SortKey>('rank');
   const [sortDir, setSortDir] = useState<SortDir>('asc');
+  const [priceSource, setPriceSource] = useState<'loading' | 'live' | 'fallback'>('loading');
+  const basePricesRef = useRef<Record<string, number>>({});
+
+  // Fetch real prices from Base mainnet on mount
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadPrices() {
+      const quotable = ['WETH', 'cbETH', 'AERO', 'USDC', 'USDbC'];
+      const results: Record<string, number> = {};
+      let anySuccess = false;
+
+      await Promise.all(
+        quotable.map(async (symbol) => {
+          const price = await fetchRealPrice(symbol);
+          if (price !== null) {
+            results[symbol] = price;
+            anySuccess = true;
+          }
+        })
+      );
+
+      if (cancelled) return;
+
+      if (anySuccess) {
+        basePricesRef.current = results;
+        setPriceSource('live');
+        // Update token prices with real data
+        setTokens(prev =>
+          prev.map(t => {
+            const realPrice = results[t.symbol];
+            if (realPrice !== undefined) {
+              return {
+                ...t,
+                price: realPrice,
+                sparkline: generateSparkline(realPrice, t.change24h),
+              };
+            }
+            return t;
+          })
+        );
+      } else {
+        setPriceSource('fallback');
+      }
+    }
+
+    loadPrices();
+    return () => { cancelled = true; };
+  }, []);
 
   const handleSort = (key: SortKey) => {
     if (sortKey === key) {
@@ -106,7 +274,7 @@ export default function TokenScreener() {
   const tick = useCallback(() => {
     setTokens(prev =>
       prev.map(t => {
-        const delta = (Math.random() - 0.5) * 0.01;
+        const delta = (Math.random() - 0.5) * 0.004; // small fluctuation for live feel
         const newPrice = t.price * (1 + delta);
         const changeDelta = (Math.random() - 0.5) * 0.1;
         const volumeDelta = (Math.random() - 0.5) * 0.02;
@@ -165,8 +333,8 @@ export default function TokenScreener() {
       <div className="terminal-header">
         <span className="text-[11px] font-semibold uppercase tracking-wider text-aegis-text-dim">Token Screener</span>
         <span className="ml-auto flex items-center gap-1.5 text-[10px] text-aegis-muted">
-          <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 text-emerald-400 pulse-glow" />
-          LIVE
+          <span className={`h-1.5 w-1.5 rounded-full ${priceSource === 'live' ? 'bg-emerald-400 text-emerald-400 pulse-glow' : priceSource === 'loading' ? 'bg-yellow-400 animate-pulse' : 'bg-orange-400'}`} />
+          {priceSource === 'live' ? 'LIVE \u00B7 Base Mainnet' : priceSource === 'loading' ? 'Loading...' : 'ESTIMATED'}
         </span>
       </div>
       {/* Search */}

@@ -22,6 +22,7 @@ export default function CreateAllowance() {
   const [expiry, setExpiry] = useState("");
   const [targetsInput, setTargetsInput] = useState("");
   const [isExpanded, setIsExpanded] = useState(false);
+  const [showDelegationDetails, setShowDelegationDetails] = useState(false);
 
   const { data: owner } = useReadContract({
     address: TREASURY_ADDRESS,
@@ -271,6 +272,116 @@ export default function CreateAllowance() {
                 </a>
               </div>
             )}
+
+            {/* Delegation Details (collapsible) */}
+            <div
+              className="rounded-lg overflow-hidden"
+              style={{ background: "rgba(139,92,246,0.04)", border: "1px solid rgba(139,92,246,0.1)" }}
+            >
+              <button
+                type="button"
+                onClick={() => setShowDelegationDetails(!showDelegationDetails)}
+                className="flex w-full items-center justify-between px-3 py-2 text-[11px] font-medium text-purple-300 hover:bg-[rgba(139,92,246,0.06)] transition-colors"
+              >
+                <span className="flex items-center gap-1.5">
+                  <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75m-3-7.036A11.959 11.959 0 0 1 3.598 6 11.99 11.99 0 0 0 3 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285Z" />
+                  </svg>
+                  Delegation Details
+                </span>
+                <svg
+                  className={`h-3 w-3 transition-transform duration-200 ${showDelegationDetails ? 'rotate-180' : ''}`}
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  strokeWidth={2}
+                  stroke="currentColor"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+                </svg>
+              </button>
+              {showDelegationDetails && (
+                <div className="px-3 pb-3 space-y-2.5 text-[10px]">
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-aegis-muted">Smart Account</span>
+                      <code className="font-mono text-[9px] text-blue-400/80">
+                        {address ? `${address.slice(0, 6)}...${address.slice(-4)}` : 'Not connected'}
+                      </code>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-aegis-muted">DelegationManager</span>
+                      <code className="font-mono text-[9px] text-blue-400/80">0xdb9B...7dB3</code>
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <span className="text-[10px] font-medium text-aegis-text-dim">Caveat Enforcers</span>
+                    <div className="rounded-md px-2 py-1.5 space-y-1" style={{ background: "rgba(0,0,0,0.2)" }}>
+                      <div className="flex items-center gap-1.5">
+                        <span className="h-1 w-1 rounded-full bg-purple-400" />
+                        <span className="text-aegis-text-dim">
+                          <span className="text-white font-medium">ERC20TransferAmount</span>
+                          {maxAmount ? ` — max ${maxAmount} USDC` : ' — max amount TBD'}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="h-1 w-1 rounded-full bg-purple-400" />
+                        <span className="text-aegis-text-dim">
+                          <span className="text-white font-medium">AllowedTargets</span>
+                          {targetsInput ? ` — ${targetsInput.split(',').filter(t => t.trim()).length} target(s)` : ' — unrestricted'}
+                        </span>
+                      </div>
+                      {expiry && (
+                        <div className="flex items-center gap-1.5">
+                          <span className="h-1 w-1 rounded-full bg-purple-400" />
+                          <span className="text-aegis-text-dim">
+                            <span className="text-white font-medium">TimestampExpiry</span> — {new Date(expiry).toLocaleDateString()}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <span className="text-[10px] font-medium text-aegis-text-dim">EIP-712 Typed Data Preview</span>
+                    <pre
+                      className="rounded-md px-2 py-1.5 font-mono text-[9px] text-aegis-text-dim overflow-x-auto"
+                      style={{ background: "rgba(0,0,0,0.2)" }}
+                    >
+{`{
+  "types": {
+    "Delegation": [
+      { "name": "delegate", "type": "address" },
+      { "name": "delegator", "type": "address" },
+      { "name": "authority", "type": "bytes32" },
+      { "name": "caveats", "type": "Caveat[]" }
+    ]
+  },
+  "domain": {
+    "name": "DelegationManager",
+    "version": "1",
+    "chainId": 84532,
+    "verifyingContract": "0xdb9B...7dB3"
+  }
+}`}
+                    </pre>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Badge */}
+            <div className="flex items-center pt-1">
+              <span
+                className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-semibold text-purple-300"
+                style={{ background: "rgba(139,92,246,0.1)", border: "1px solid rgba(139,92,246,0.15)" }}
+              >
+                <svg className="h-2.5 w-2.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75m-3-7.036A11.959 11.959 0 0 1 3.598 6 11.99 11.99 0 0 0 3 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285Z" />
+                </svg>
+                Uses MetaMask Delegation Framework
+              </span>
+            </div>
           </form>
         </div>
       </div>

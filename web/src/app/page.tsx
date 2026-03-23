@@ -13,7 +13,6 @@ import TerminalFeed from "@/components/TerminalFeed";
 import StrategyPanel from "@/components/StrategyPanel";
 import VenicePanel from "@/components/VenicePanel";
 import AgentChat from "@/components/AgentChat";
-import DelegationPanel from "@/components/DelegationPanel";
 import MarketSentiment from "@/components/MarketSentiment";
 import PortfolioOptimizer from "@/components/PortfolioOptimizer";
 import { useAccount, useReadContract } from "wagmi";
@@ -201,10 +200,6 @@ function DashboardView() {
           <EmergencyControls />
         </div>
 
-        {/* Row 5: MetaMask Delegation Framework — full width */}
-        <div className="lg:col-span-2">
-          <DelegationPanel />
-        </div>
       </div>
 
       {/* Collapsible Agent Chat */}

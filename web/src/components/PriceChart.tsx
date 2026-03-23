@@ -1,19 +1,61 @@
 'use client';
 
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { createPublicClient, http, encodeFunctionData, decodeFunctionResult } from 'viem';
+import { base } from 'viem/chains';
+
+const baseClient = createPublicClient({
+  chain: base,
+  transport: http('https://base.drpc.org'),
+});
+
+const WETH_ADDRESS = '0x4200000000000000000000000000000000000006' as `0x${string}`;
+const USDC_ADDRESS = '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913' as `0x${string}`;
+const QUOTER_V2 = '0x3d4e44Eb1374240CE5F1B871ab261CD16335B76a' as `0x${string}`;
+
+const QUOTER_ABI = [
+  {
+    type: 'function',
+    name: 'quoteExactInputSingle',
+    inputs: [
+      {
+        name: 'params',
+        type: 'tuple',
+        components: [
+          { name: 'tokenIn', type: 'address' },
+          { name: 'tokenOut', type: 'address' },
+          { name: 'amountIn', type: 'uint256' },
+          { name: 'fee', type: 'uint24' },
+          { name: 'sqrtPriceLimitX96', type: 'uint160' },
+        ],
+      },
+    ],
+    outputs: [
+      { name: 'amountOut', type: 'uint256' },
+      { name: 'sqrtPriceX96After', type: 'uint160' },
+      { name: 'initializedTicksCrossed', type: 'uint32' },
+      { name: 'gasEstimate', type: 'uint256' },
+    ],
+    stateMutability: 'nonpayable',
+  },
+] as const;
 
 type Timeframe = '1H' | '4H' | '1D' | '1W';
 
 const POINT_COUNTS: Record<Timeframe, number> = { '1H': 60, '4H': 96, '1D': 96, '1W': 84 };
 
-function generateData(count: number, seed: number): number[] {
+function generateData(count: number, seed: number, currentPrice: number): number[] {
   const data: number[] = [];
-  let price = 3400 + seed * 100;
-  for (let i = 0; i < count; i++) {
-    price += Math.sin(i * 0.15 + seed) * 12 + (Math.random() - 0.48) * 18;
-    price = Math.max(price, 2800);
+  // Start from a price that will trend toward the current real price
+  let price = currentPrice * (0.97 + seed * 0.005);
+  for (let i = 0; i < count - 1; i++) {
+    const targetDrift = (currentPrice - price) / (count - i) * 0.5;
+    price += targetDrift + Math.sin(i * 0.15 + seed) * (currentPrice * 0.003) + (Math.random() - 0.48) * (currentPrice * 0.004);
+    price = Math.max(price, currentPrice * 0.9);
     data.push(price);
   }
+  // Last point is the real current price
+  data.push(currentPrice);
   return data;
 }
 
@@ -33,18 +75,78 @@ function formatTime(index: number, count: number, timeframe: Timeframe): string 
   return t.toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
 
+async function fetchWethPrice(): Promise<number | null> {
+  try {
+    const callData = encodeFunctionData({
+      abi: QUOTER_ABI,
+      functionName: 'quoteExactInputSingle',
+      args: [
+        {
+          tokenIn: WETH_ADDRESS,
+          tokenOut: USDC_ADDRESS,
+          amountIn: BigInt(10) ** BigInt(18), // 1 WETH
+          fee: 3000,
+          sqrtPriceLimitX96: 0n,
+        },
+      ],
+    });
+
+    const result = await baseClient.call({
+      to: QUOTER_V2,
+      data: callData,
+    });
+
+    if (!result.data) return null;
+
+    const decoded = decodeFunctionResult({
+      abi: QUOTER_ABI,
+      functionName: 'quoteExactInputSingle',
+      data: result.data,
+    });
+
+    const amountOut = decoded[0];
+    const price = Number(amountOut) / 1e6;
+    return price > 0 ? price : null;
+  } catch (err) {
+    console.warn('Failed to fetch WETH price from Base mainnet:', err);
+    return null;
+  }
+}
+
 export default function PriceChart() {
   const [timeframe, setTimeframe] = useState<Timeframe>('1D');
   const [seed, setSeed] = useState(1);
   const [hoverIndex, setHoverIndex] = useState<number | null>(null);
+  const [realPrice, setRealPrice] = useState<number | null>(null);
+  const [priceSource, setPriceSource] = useState<'loading' | 'live' | 'fallback'>('loading');
   const svgRef = useRef<SVGSVGElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  // Fetch real WETH price on mount
+  useEffect(() => {
+    let cancelled = false;
+    async function load() {
+      const price = await fetchWethPrice();
+      if (cancelled) return;
+      if (price !== null) {
+        setRealPrice(price);
+        setPriceSource('live');
+      } else {
+        setRealPrice(3400); // fallback
+        setPriceSource('fallback');
+      }
+    }
+    load();
+    return () => { cancelled = true; };
+  }, []);
 
   useEffect(() => {
     setSeed(Math.random() * 10);
   }, [timeframe]);
 
-  const data = useMemo(() => generateData(POINT_COUNTS[timeframe], seed), [timeframe, seed]);
+  const currentPrice = realPrice ?? 3400;
+
+  const data = useMemo(() => generateData(POINT_COUNTS[timeframe], seed, currentPrice), [timeframe, seed, currentPrice]);
   const volumeData = useMemo(() => generateVolume(POINT_COUNTS[timeframe], seed), [timeframe, seed]);
 
   const high = Math.max(...data);
@@ -98,13 +200,25 @@ export default function PriceChart() {
     <div className="terminal-panel flex flex-col h-full">
       <div className="terminal-header flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <span className="text-[11px] font-semibold uppercase tracking-wider text-aegis-text-dim">WETH / USD</span>
+          <div className="flex items-center gap-1.5">
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-aegis-text-dim">WETH / USDC</span>
+            <span className="text-[9px] text-aegis-muted">&middot; Base Mainnet</span>
+          </div>
           <span className={`font-mono text-sm font-bold ${isPositive ? 'text-green-400' : 'text-red-400'}`}>
             ${current.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </span>
           <span className={`font-mono text-[11px] font-medium ${isPositive ? 'price-up' : 'price-down'}`}>
             {isPositive ? '+' : ''}{changePercent.toFixed(2)}%
           </span>
+          {priceSource === 'live' && (
+            <span className="flex items-center gap-1 text-[9px] text-emerald-400/70">
+              <span className="h-1 w-1 rounded-full bg-emerald-400 pulse-glow" />
+              LIVE
+            </span>
+          )}
+          {priceSource === 'fallback' && (
+            <span className="text-[9px] text-orange-400/70">EST</span>
+          )}
         </div>
         <div className="flex items-center gap-1">
           {(['1H', '4H', '1D', '1W'] as Timeframe[]).map(tf => (

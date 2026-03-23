@@ -431,6 +431,57 @@ export default function Treasury() {
         </div>
       )}
 
+      {/* Agent Permissions (MetaMask Delegation Framework) */}
+      <div
+        className="rounded-xl p-4 space-y-3"
+        style={{
+          background: "linear-gradient(135deg, rgba(139,92,246,0.06) 0%, rgba(59,130,246,0.04) 100%)",
+          border: "1px solid rgba(139,92,246,0.1)",
+        }}
+      >
+        <div className="flex items-center gap-2">
+          <svg className="h-4 w-4 text-purple-400" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75m-3-7.036A11.959 11.959 0 0 1 3.598 6 11.99 11.99 0 0 0 3 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285Z" />
+          </svg>
+          <h3 className="text-xs font-semibold text-white">Agent Permissions (MetaMask Delegation Framework)</h3>
+        </div>
+        <p className="text-[11px] text-aegis-text-dim leading-relaxed">
+          Allowances are managed via scoped delegations. Each agent receives a cryptographic delegation
+          signed with EIP-712 typed data, enforced by on-chain caveat enforcers.
+        </p>
+        <div className="space-y-1.5 text-[10px]">
+          <div className="flex items-start gap-2">
+            <span className="text-purple-400 mt-0.5">&#x2022;</span>
+            <span className="text-aegis-text-dim">
+              Creates a scoped delegation with <span className="text-white font-medium">EIP-712 signing</span>
+            </span>
+          </div>
+          <div className="flex items-start gap-2">
+            <span className="text-purple-400 mt-0.5">&#x2022;</span>
+            <span className="text-aegis-text-dim">
+              DelegationManager: <code className="font-mono text-[9px] text-blue-400/80">0xdb9B...7dB3</code>
+            </span>
+          </div>
+          <div className="flex items-start gap-2">
+            <span className="text-purple-400 mt-0.5">&#x2022;</span>
+            <span className="text-aegis-text-dim">
+              Caveats: <span className="text-white font-medium">ERC20TransferAmount</span> (max X USDC) + <span className="text-white font-medium">AllowedTargets</span>
+            </span>
+          </div>
+        </div>
+        <div className="flex items-center gap-1.5 pt-1">
+          <span
+            className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-semibold text-purple-300"
+            style={{ background: "rgba(139,92,246,0.12)", border: "1px solid rgba(139,92,246,0.2)" }}
+          >
+            <svg className="h-2.5 w-2.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75m-3-7.036A11.959 11.959 0 0 1 3.598 6 11.99 11.99 0 0 0 3 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285Z" />
+            </svg>
+            Powered by MetaMask Delegation Framework
+          </span>
+        </div>
+      </div>
+
       {/* Contract address */}
       <a
         href={`https://sepolia.basescan.org/address/${TREASURY_ADDRESS}`}
