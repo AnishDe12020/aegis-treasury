@@ -69,7 +69,7 @@ export default function Treasury() {
   });
 
   // Read user's USDC balance
-  const { data: userBalance } = useReadContract({
+  const { data: userBalance, refetch: refetchUserBalance } = useReadContract({
     address: USDC_ADDRESS,
     abi: ERC20_ABI,
     functionName: "balanceOf",
@@ -160,7 +160,7 @@ export default function Treasury() {
                 {
                   onSuccess: () => {
                     setDepositAmount("");
-                    setTimeout(() => refetchBalance(), 2000);
+                    setTimeout(() => { refetchBalance(); refetchUserBalance(); }, 2000);
                   },
                 }
               );
@@ -179,7 +179,7 @@ export default function Treasury() {
         {
           onSuccess: () => {
             setDepositAmount("");
-            setTimeout(() => refetchBalance(), 2000);
+            setTimeout(() => { refetchBalance(); refetchUserBalance(); }, 2000);
           },
         }
       );
@@ -199,7 +199,7 @@ export default function Treasury() {
       {
         onSuccess: () => {
           setWithdrawAmount("");
-          setTimeout(() => refetchBalance(), 2000);
+          setTimeout(() => { refetchBalance(); refetchUserBalance(); }, 2000);
         },
       }
     );
@@ -326,7 +326,7 @@ export default function Treasury() {
 
       {/* Mint Test USDC */}
       {isConnected && (
-        <MintButton address={address!} refetchBalance={() => { refetchBalance(); }} />
+        <MintButton address={address!} refetchBalance={() => { refetchBalance(); refetchUserBalance(); }} />
       )}
 
       {/* Deposit / Withdraw tabs */}
