@@ -86,7 +86,11 @@ export default function OrderBook() {
       <div className="flex-1 overflow-auto">
         {rows.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-10 text-aegis-muted">
-            <p className="text-xs">No active allowances</p>
+            <svg className="mb-3 h-8 w-8 text-aegis-muted/40" fill="none" viewBox="0 0 24 24" strokeWidth={1} stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 12h16.5m-16.5 3.75h16.5M3.75 19.5h16.5M5.625 4.5h12.75a1.875 1.875 0 0 1 0 3.75H5.625a1.875 1.875 0 0 1 0-3.75Z" />
+            </svg>
+            <p className="text-xs font-medium">No active allowances</p>
+            <p className="mt-1 text-[10px] text-aegis-text-dim">Create an agent allowance to see it here</p>
           </div>
         ) : (
           <div className="space-y-0">

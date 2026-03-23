@@ -300,7 +300,7 @@ export default function Home() {
   }, []);
 
   return (
-    <div className="relative z-10 min-h-screen">
+    <div className="relative z-10 flex min-h-screen flex-col">
       {/* Grid pattern overlay */}
       <div className="grid-overlay" />
 
@@ -372,14 +372,16 @@ export default function Home() {
       </nav>
 
       {/* Content */}
-      {!isConnected ? (
-        <HeroSection />
-      ) : (
-        <TradingTerminal activeTab={activeNav} />
-      )}
+      <div className="flex-1">
+        {!isConnected ? (
+          <HeroSection />
+        ) : (
+          <TradingTerminal activeTab={activeNav} />
+        )}
+      </div>
 
       {/* Footer */}
-      <footer className="mt-8 border-t border-aegis-border py-4">
+      <footer className="mt-8 shrink-0 border-t border-aegis-border py-4">
         <div className={`mx-auto flex items-center justify-between px-4 ${isConnected ? 'max-w-[1600px]' : 'max-w-6xl'}`}>
           <div className="flex items-center gap-2 text-[10px] text-aegis-muted">
             <ShieldIcon className="h-3 w-3" />

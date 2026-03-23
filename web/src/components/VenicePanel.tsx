@@ -157,7 +157,7 @@ export default function VenicePanel() {
         )}
 
         {analysis && !loading && (
-          <>
+          <div className="fade-up space-y-3">
             {/* Action + Confidence */}
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -214,7 +214,7 @@ export default function VenicePanel() {
               <span className="text-aegis-muted uppercase tracking-wider text-[10px] font-medium">Reasoning</span>
               <p className="mt-1 text-aegis-text-dim leading-relaxed">{analysis.reasoning}</p>
             </div>
-          </>
+          </div>
         )}
 
         <div className="h-px bg-[rgba(255,255,255,0.06)]" />

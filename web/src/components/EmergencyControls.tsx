@@ -154,10 +154,10 @@ export default function EmergencyControls() {
         {/* Status indicator */}
         <div className="flex items-center gap-2">
           <span
-            className={`h-2 w-2 rounded-full ${
+            className={`h-2 w-2 rounded-full pulse-glow ${
               isPaused
-                ? "bg-red-400 shadow-[0_0_8px_rgba(239,68,68,0.6)]"
-                : "bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.6)]"
+                ? "bg-red-400 text-red-400"
+                : "bg-emerald-400 text-emerald-400"
             }`}
           />
           <span

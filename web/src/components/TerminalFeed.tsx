@@ -256,7 +256,7 @@ export default function TerminalFeed({ maxHeight }: { maxHeight?: string }) {
         style={{ maxHeight: maxHeight ?? '320px' }}
       >
         {lines.map(line => (
-          <div key={line.id} className="whitespace-nowrap">
+          <div key={line.id} className="whitespace-nowrap slide-in-right">
             <span className="text-green-500">[{line.timestamp}]</span>{' '}
             <span className={colorMap[line.color]}>{line.message}</span>
           </div>

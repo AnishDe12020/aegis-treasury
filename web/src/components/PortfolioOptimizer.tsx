@@ -147,7 +147,7 @@ export default function PortfolioOptimizer() {
         )}
 
         {data && !loading && (
-          <>
+          <div className="fade-up space-y-3">
             {/* Side-by-side allocation comparison */}
             <div className="flex gap-4">
               <AllocationBars
@@ -192,7 +192,7 @@ export default function PortfolioOptimizer() {
               <span className="text-aegis-muted uppercase tracking-wider text-[10px] font-medium">Reasoning</span>
               <p className="mt-1 text-aegis-text-dim leading-relaxed">{data.reasoning}</p>
             </div>
-          </>
+          </div>
         )}
 
         <div className="h-px bg-[rgba(255,255,255,0.06)]" />

@@ -169,7 +169,10 @@ export default function Portfolio() {
       <div className="flex-1 overflow-auto">
         {!isConnected ? (
           <div className="flex flex-col items-center justify-center py-10 text-aegis-muted">
-            <p className="text-xs">Connect wallet to view portfolio</p>
+            <svg className="mb-3 h-8 w-8 text-aegis-muted/40" fill="none" viewBox="0 0 24 24" strokeWidth={1} stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M21 12a2.25 2.25 0 0 0-2.25-2.25H15a3 3 0 1 1-6 0H5.25A2.25 2.25 0 0 0 3 12m18 0v6a2.25 2.25 0 0 1-2.25 2.25H5.25A2.25 2.25 0 0 1 3 18v-6m18 0V9M3 12V9m18 0a2.25 2.25 0 0 0-2.25-2.25H5.25A2.25 2.25 0 0 0 3 9m18 0V6a2.25 2.25 0 0 0-2.25-2.25H5.25A2.25 2.25 0 0 0 3 6v3" />
+            </svg>
+            <p className="text-xs font-medium">Connect wallet to view portfolio</p>
           </div>
         ) : (
           <div>
@@ -219,7 +222,8 @@ export default function Portfolio() {
 
             {holdings.length === 0 && (
               <div className="flex flex-col items-center justify-center py-8 text-aegis-muted">
-                <p className="text-xs">No token balances found</p>
+                <p className="text-xs font-medium">No token balances found</p>
+                <p className="mt-1 text-[10px] text-aegis-text-dim">Mint test USDC from the Treasury panel</p>
               </div>
             )}
           </div>

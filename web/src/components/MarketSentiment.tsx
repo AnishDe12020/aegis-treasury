@@ -181,7 +181,7 @@ export default function MarketSentiment() {
         )}
 
         {data && (
-          <>
+          <div className="fade-up">
             {/* Sentiment + Fear/Greed row */}
             <div className="flex items-center gap-3">
               {/* Overall Sentiment */}
@@ -224,7 +224,7 @@ export default function MarketSentiment() {
                 ))}
               </div>
             </div>
-          </>
+          </div>
         )}
 
         <div className="h-px bg-[rgba(255,255,255,0.06)]" />
