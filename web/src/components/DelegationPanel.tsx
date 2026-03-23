@@ -10,23 +10,23 @@ const DELEGATION_MANAGER = '0xdb9B1e94B5b69Df7e401DDbedE43491141047dB3';
 // Fix: use real-ish addresses for enforcers on Base Sepolia
 const ENFORCER_ADDRESSES: Record<string, { address: string; description: string }> = {
   AllowedTargetsEnforcer: {
-    address: '0x2fD82ACe1BB9d17b0e7E3e30263fBcE29C6c3060',
+    address: '0x7F20f61b1f09b08D970938F6fa563634d65c4EeB',
     description: 'Restricts which addresses the delegate can interact with',
   },
   ERC20TransferAmountEnforcer: {
-    address: '0x852eb61C2D25fC0eBa3d386F7d98d2b24F7e90Cf',
+    address: '0xf100b0819427117EcF76Ed94B358B1A5b5C6D2Fc',
     description: 'Limits the total ERC-20 token amount a delegate can transfer',
   },
   TimestampEnforcer: {
-    address: '0xBD7D42295a8e2A3E04E03B18f8b74A6bd9E9bA1D',
+    address: '0x1046bb45C8d673d4ea75321280DB34899413c069',
     description: 'Enforces time-based constraints — delegation valid only within window',
   },
   AllowedMethodsEnforcer: {
-    address: '0x42afCa32d41dA8e2a3B3f61e4C59d0BC7FDe3C4b',
+    address: '0x2c21fD0Cb9DC8445CB3fb0DC5E7Bb0Aca01842B5',
     description: 'Restricts which function selectors the delegate may call',
   },
   NativeTokenPaymentEnforcer: {
-    address: '0x8D5C55C69Ce24b47e39aD4A1cA0C8C1C6E5A50F6',
+    address: '0x4803a326ddED6dDBc60e659e5ed12d85c7582811',
     description: 'Requires the delegate to pay native tokens per redemption',
   },
 };
