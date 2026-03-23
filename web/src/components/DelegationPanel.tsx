@@ -55,45 +55,22 @@ const DELEGATION_TYPEHASH = {
 };
 
 // ── Mock Active Delegations ──
+// Real delegation created via MetaMask Smart Accounts Kit on Base Sepolia
 const MOCK_DELEGATIONS = [
   {
-    id: '0xa1b2c3',
-    delegate: '0x7a3B...F9e2',
-    delegateFull: '0x7a3B461d4C2e8A9f0D5c6B7E1F3a2D4C6E8F9e2',
-    delegator: '0x33E4...ece7',
+    id: '0xfcc5ef',
+    delegate: '0x8a49...eeD9',
+    delegateFull: '0x8a492261655c48997D79d1d479a7c6E5A32deeD9',
+    delegator: '0x5ba7...C252',
+    delegatorFull: '0x5ba7b5aFBd48871D428d249cd021C28f6cbFC252',
     token: 'USDC',
     maxAmount: '500.00',
-    spent: '127.50',
-    expiry: '2026-04-15T00:00:00Z',
-    caveats: 3,
-    status: 'active' as const,
-    caveatTypes: ['AllowedTargetsEnforcer', 'ERC20TransferAmountEnforcer', 'TimestampEnforcer'],
-  },
-  {
-    id: '0xd4e5f6',
-    delegate: '0x1234...aBcD',
-    delegateFull: '0x1234567890abcdef1234567890abcdef1234aBcD',
-    delegator: '0x33E4...ece7',
-    token: 'USDC',
-    maxAmount: '1,000.00',
     spent: '0.00',
-    expiry: '2026-05-01T00:00:00Z',
+    expiry: 'No expiry',
     caveats: 2,
     status: 'active' as const,
-    caveatTypes: ['ERC20TransferAmountEnforcer', 'AllowedMethodsEnforcer'],
-  },
-  {
-    id: '0x789abc',
-    delegate: '0xDeAd...bEeF',
-    delegateFull: '0xDeAdBeefDeAdBeefDeAdBeefDeAdBeefDeAdbEeF',
-    delegator: '0x33E4...ece7',
-    token: 'USDC',
-    maxAmount: '250.00',
-    spent: '250.00',
-    expiry: '2026-03-01T00:00:00Z',
-    caveats: 3,
-    status: 'expired' as const,
-    caveatTypes: ['AllowedTargetsEnforcer', 'ERC20TransferAmountEnforcer', 'TimestampEnforcer'],
+    caveatTypes: ['ERC20TransferAmountEnforcer', 'AllowedCalldataEnforcer'],
+    note: 'Created via toMetaMaskSmartAccount() + createDelegation() + EIP-712 signing',
   },
 ];
 
